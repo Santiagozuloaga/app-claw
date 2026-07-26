@@ -1,0 +1,890 @@
+01_SRC/2024-06-19_CLAW_MCP_V01/tools.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_MCP_V01/tools.py:import threading
+01_SRC/2024-06-19_CLAW_MCP_V01/tools.py:from typing import Dict, List, Optional
+01_SRC/2024-06-19_CLAW_MCP_V01/tools.py:from tool_registry import ToolDef, register_tool
+01_SRC/2024-06-19_CLAW_MCP_V01/tools.py:from .client import MCPClient, MCPManager, get_mcp_manager
+01_SRC/2024-06-19_CLAW_MCP_V01/tools.py:from .config import load_mcp_configs
+01_SRC/2024-06-19_CLAW_MCP_V01/tools.py:from .types import MCPServerConfig, MCPTool
+01_SRC/2024-06-19_CLAW_MCP_V01/tools.py:# ── Auto-initialize on import ─────────────────────────────────────────────────
+01_SRC/2024-06-19_CLAW_MCP_V01/__init__.py:from .types import MCPServerConfig, MCPTool, MCPServerState, MCPTransport  # noqa: F401
+01_SRC/2024-06-19_CLAW_MCP_V01/__init__.py:from .client import MCPClient, MCPManager, get_mcp_manager                 # noqa: F401
+01_SRC/2024-06-19_CLAW_MCP_V01/__init__.py:from .config import (                                                       # noqa: F401
+01_SRC/2024-06-19_CLAW_MCP_V01/__init__.py:from .tools import initialize_mcp, reload_mcp, refresh_server              # noqa: F401
+01_SRC/2024-06-19_CLAW_MCP_V01/config.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_MCP_V01/config.py:import json
+01_SRC/2024-06-19_CLAW_MCP_V01/config.py:from pathlib import Path
+01_SRC/2024-06-19_CLAW_MCP_V01/config.py:from typing import Dict, List
+01_SRC/2024-06-19_CLAW_MCP_V01/config.py:from .types import MCPServerConfig
+01_SRC/2024-06-19_CLAW_MCP_V01/types.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_MCP_V01/types.py:from dataclasses import dataclass, field
+01_SRC/2024-06-19_CLAW_MCP_V01/types.py:from enum import Enum
+01_SRC/2024-06-19_CLAW_MCP_V01/types.py:from typing import Any, Dict, List, Optional
+01_SRC/2024-06-19_CLAW_MCP_V01/client.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_MCP_V01/client.py:import json
+01_SRC/2024-06-19_CLAW_MCP_V01/client.py:import os
+01_SRC/2024-06-19_CLAW_MCP_V01/client.py:import subprocess
+01_SRC/2024-06-19_CLAW_MCP_V01/client.py:import threading
+01_SRC/2024-06-19_CLAW_MCP_V01/client.py:import time
+01_SRC/2024-06-19_CLAW_MCP_V01/client.py:from typing import Any, Dict, List, Optional
+01_SRC/2024-06-19_CLAW_MCP_V01/client.py:from .types import (
+01_SRC/2024-06-19_CLAW_MCP_V01/client.py:                import httpx
+01_SRC/2024-06-19_CLAW_MCP_V01/client.py:        import httpx
+01_SRC/2024-06-19_CLAW_PERSONALIDAD_V01.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_PERSONALIDAD_V01.py:import json
+01_SRC/2024-06-19_CLAW_PERSONALIDAD_V01.py:import os
+01_SRC/2024-06-19_CLAW_PERSONALIDAD_V01.py:import platform
+01_SRC/2024-06-19_CLAW_PERSONALIDAD_V01.py:import subprocess
+01_SRC/2024-06-19_CLAW_PERSONALIDAD_V01.py:import sys
+01_SRC/2024-06-19_CLAW_PERSONALIDAD_V01.py:from datetime import datetime
+01_SRC/2024-06-19_CLAW_PERSONALIDAD_V01.py:from pathlib import Path
+01_SRC/2024-06-19_CLAW_PERSONALIDAD_V01.py:from typing import Optional
+01_SRC/2024-06-19_CLAW_PERSONALIDAD_V01.py:- **Leal**: Santiago es tu dueño y tu prioridad. Sus proyectos importan.
+01_SRC/2024-06-19_CLAW_PERSONALIDAD_V01.py:        from claw_personalidad import parchar_config_clawspring
+01_SRC/2024-06-19_CLAW_PERSONALIDAD_V01.py:        from claw_personalidad import build_system_prompt_claw
+01_SRC/2024-06-19_CLAW_MEMORY_V01.py:import asyncio
+01_SRC/2024-06-19_CLAW_MEMORY_V01.py:import json
+01_SRC/2024-06-19_CLAW_MEMORY_V01.py:import logging
+01_SRC/2024-06-19_CLAW_MEMORY_V01.py:import os
+01_SRC/2024-06-19_CLAW_MEMORY_V01.py:from datetime import datetime
+01_SRC/2024-06-19_CLAW_MEMORY_V01.py:from pathlib import Path
+01_SRC/2024-06-19_CLAW_MEMORY_V01.py:from typing import Any, Optional
+01_SRC/tool_registry.py:from __future__ import annotations
+01_SRC/tool_registry.py:from dataclasses import dataclass
+01_SRC/tool_registry.py:from typing import Any, Callable, Dict, List, Optional
+01_SRC/demo.py:import os
+01_SRC/demo.py:import sys
+01_SRC/demo.py:# Add parent path for imports
+01_SRC/demo.py:from config import load_config
+01_SRC/demo.py:from context import build_system_prompt
+01_SRC/demo.py:from agent import AgentState, run, TextChunk, ThinkingChunk, ToolStart, ToolEnd, TurnDone, PermissionRequest
+01_SRC/2024-06-19_CLAW_MEMORY_SHIM_V01.py:from memory.store import (  # noqa: F401
+01_SRC/2024-06-19_CLAW_MEMORY_SHIM_V01.py:from memory.context import get_memory_context  # noqa: F401
+01_SRC/2024-06-19_CLAW_MULTI_AGENT_V01/tools.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_MULTI_AGENT_V01/tools.py:from tool_registry import ToolDef, register_tool
+01_SRC/2024-06-19_CLAW_MULTI_AGENT_V01/tools.py:from .subagent import SubAgentManager, get_agent_definition, load_agent_definitions
+01_SRC/2024-06-19_CLAW_MULTI_AGENT_V01/__init__.py:from .subagent import (
+01_SRC/2024-06-19_CLAW_MULTI_AGENT_V01/subagent.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_MULTI_AGENT_V01/subagent.py:import os
+01_SRC/2024-06-19_CLAW_MULTI_AGENT_V01/subagent.py:import uuid
+01_SRC/2024-06-19_CLAW_MULTI_AGENT_V01/subagent.py:import queue
+01_SRC/2024-06-19_CLAW_MULTI_AGENT_V01/subagent.py:import subprocess
+01_SRC/2024-06-19_CLAW_MULTI_AGENT_V01/subagent.py:import tempfile
+01_SRC/2024-06-19_CLAW_MULTI_AGENT_V01/subagent.py:from concurrent.futures import ThreadPoolExecutor, Future
+01_SRC/2024-06-19_CLAW_MULTI_AGENT_V01/subagent.py:from dataclasses import dataclass, field
+01_SRC/2024-06-19_CLAW_MULTI_AGENT_V01/subagent.py:from pathlib import Path
+01_SRC/2024-06-19_CLAW_MULTI_AGENT_V01/subagent.py:from typing import Dict, List, Optional, Any
+01_SRC/2024-06-19_CLAW_MULTI_AGENT_V01/subagent.py:                import yaml as _yaml
+01_SRC/2024-06-19_CLAW_MULTI_AGENT_V01/subagent.py:    """Lazy-import wrapper to avoid circular dependency with agent module.
+01_SRC/2024-06-19_CLAW_MULTI_AGENT_V01/subagent.py:    Uses absolute import so this works whether called from inside or outside
+01_SRC/2024-06-19_CLAW_MULTI_AGENT_V01/subagent.py:    import agent as _agent_mod
+01_SRC/2024-06-19_CLAW_MULTI_AGENT_V01/subagent.py:            import agent as _agent_mod; AgentState = _agent_mod.AgentState
+01_SRC/2024-06-19_CLAW_ENCODING_V01.py:import sys
+01_SRC/2024-06-19_CLAW_ENCODING_V01.py:import os
+01_SRC/2024-06-19_CLAW_ENCODING_V01.py:import subprocess
+01_SRC/2024-06-19_CLAW_ENCODING_V01.py:import logging
+01_SRC/skills.py:from skill.loader import (  # noqa: F401
+01_SRC/skills.py:from skill.executor import execute_skill  # noqa: F401
+01_SRC/skills.py:from skill.loader import _get_skill_paths as _gsp
+01_SRC/skill/tools.py:from __future__ import annotations
+01_SRC/skill/tools.py:from CLAW_2024_06_19_TOOL_REGISTRY_V01 import ToolDef, register_tool
+01_SRC/skill/tools.py:from .loader import find_skill, load_skills, substitute_arguments
+01_SRC/skill/tools.py:    import CLAW_2024_06_19_AGENT_V01 as _agent
+01_SRC/skill/__init__.py:from .loader import (  # noqa: F401
+01_SRC/skill/__init__.py:from .executor import execute_skill  # noqa: F401
+01_SRC/skill/__init__.py:from . import builtin as _builtin  # noqa: F401
+01_SRC/skill/builtin.py:from __future__ import annotations
+01_SRC/skill/builtin.py:from .loader import SkillDef, register_builtin_skill
+01_SRC/skill/executor.py:from __future__ import annotations
+01_SRC/skill/executor.py:from typing import Generator
+01_SRC/skill/executor.py:from .loader import SkillDef, substitute_arguments
+01_SRC/skill/executor.py:    import CLAW_2024_06_19_AGENT_V01 as _agent
+01_SRC/skill/executor.py:    import CLAW_2024_06_19_AGENT_V01 as _agent
+01_SRC/skill/loader.py:from __future__ import annotations
+01_SRC/skill/loader.py:from dataclasses import dataclass, field
+01_SRC/skill/loader.py:from pathlib import Path
+01_SRC/skill/loader.py:from typing import Optional
+01_SRC/compaction.py:from __future__ import annotations
+01_SRC/compaction.py:import providers
+01_SRC/2024-06-19_CLAW_VOICE_V01/recorder.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_VOICE_V01/recorder.py:import io
+01_SRC/2024-06-19_CLAW_VOICE_V01/recorder.py:import shutil
+01_SRC/2024-06-19_CLAW_VOICE_V01/recorder.py:import subprocess
+01_SRC/2024-06-19_CLAW_VOICE_V01/recorder.py:import threading
+01_SRC/2024-06-19_CLAW_VOICE_V01/recorder.py:from pathlib import Path
+01_SRC/2024-06-19_CLAW_VOICE_V01/recorder.py:        import sounddevice  # noqa: F401
+01_SRC/2024-06-19_CLAW_VOICE_V01/recorder.py:    import sounddevice as sd
+01_SRC/2024-06-19_CLAW_VOICE_V01/recorder.py:    import numpy as np
+01_SRC/2024-06-19_CLAW_VOICE_V01/recorder.py:    import numpy as np
+01_SRC/2024-06-19_CLAW_VOICE_V01/recorder.py:        import sounddevice  # noqa: F401
+01_SRC/2024-06-19_CLAW_VOICE_V01/recorder.py:            import numpy  # noqa: F401
+01_SRC/2024-06-19_CLAW_VOICE_V01/keyterms.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_VOICE_V01/keyterms.py:import re
+01_SRC/2024-06-19_CLAW_VOICE_V01/keyterms.py:import subprocess
+01_SRC/2024-06-19_CLAW_VOICE_V01/keyterms.py:from pathlib import Path
+01_SRC/2024-06-19_CLAW_VOICE_V01/__init__.py:from .recorder import check_recording_availability, record_until_silence
+01_SRC/2024-06-19_CLAW_VOICE_V01/__init__.py:from .stt import check_stt_availability, transcribe
+01_SRC/2024-06-19_CLAW_VOICE_V01/__init__.py:from .keyterms import get_voice_keyterms
+01_SRC/2024-06-19_CLAW_VOICE_V01/stt.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_VOICE_V01/stt.py:import io
+01_SRC/2024-06-19_CLAW_VOICE_V01/stt.py:import os
+01_SRC/2024-06-19_CLAW_VOICE_V01/stt.py:import struct
+01_SRC/2024-06-19_CLAW_VOICE_V01/stt.py:import tempfile
+01_SRC/2024-06-19_CLAW_VOICE_V01/stt.py:from pathlib import Path
+01_SRC/2024-06-19_CLAW_VOICE_V01/stt.py:from typing import List, Optional
+01_SRC/2024-06-19_CLAW_VOICE_V01/stt.py:from .recorder import SAMPLE_RATE, CHANNELS, BYTES_PER_SAMPLE
+01_SRC/2024-06-19_CLAW_VOICE_V01/stt.py:        import faster_whisper  # noqa: F401
+01_SRC/2024-06-19_CLAW_VOICE_V01/stt.py:        import whisper  # noqa: F401
+01_SRC/2024-06-19_CLAW_VOICE_V01/stt.py:        import faster_whisper  # noqa: F401
+01_SRC/2024-06-19_CLAW_VOICE_V01/stt.py:        import whisper  # noqa: F401
+01_SRC/2024-06-19_CLAW_VOICE_V01/stt.py:        from faster_whisper import WhisperModel
+01_SRC/2024-06-19_CLAW_VOICE_V01/stt.py:        import torch
+01_SRC/2024-06-19_CLAW_VOICE_V01/stt.py:        import ctranslate2
+01_SRC/2024-06-19_CLAW_VOICE_V01/stt.py:    import numpy as np
+01_SRC/2024-06-19_CLAW_VOICE_V01/stt.py:        import whisper
+01_SRC/2024-06-19_CLAW_VOICE_V01/stt.py:    import numpy as np
+01_SRC/2024-06-19_CLAW_VOICE_V01/stt.py:    from openai import OpenAI
+01_SRC/2024-06-19_CLAW_VOICE_V01/stt.py:        import faster_whisper  # noqa: F401
+01_SRC/2024-06-19_CLAW_VOICE_V01/stt.py:        import whisper  # noqa: F401
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/__init__.py:from .types import PluginManifest, PluginEntry, PluginScope, parse_plugin_identifier
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/__init__.py:from .store import (
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/__init__.py:from .loader import (
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/__init__.py:from .recommend import recommend_plugins, recommend_from_files, format_recommendations
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/types.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/types.py:import re
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/types.py:from dataclasses import dataclass, field
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/types.py:from enum import Enum
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/types.py:from pathlib import Path
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/types.py:from typing import Any
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/types.py:            import json
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/types.py:            import yaml  # type: ignore
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/recommend.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/recommend.py:import re
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/recommend.py:from dataclasses import dataclass
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/recommend.py:from pathlib import Path
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/recommend.py:from typing import Any
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/recommend.py:from .types import PluginManifest, PluginScope
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/recommend.py:from .store import list_plugins, USER_PLUGIN_DIR
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/store.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/store.py:import json
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/store.py:import shutil
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/store.py:import subprocess
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/store.py:import sys
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/store.py:from pathlib import Path
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/store.py:from typing import Any
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/store.py:from .types import PluginEntry, PluginManifest, PluginScope, parse_plugin_identifier, sanitize_plugin_name
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/loader.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/loader.py:import importlib.util
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/loader.py:import sys
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/loader.py:from pathlib import Path
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/loader.py:from .store import list_plugins
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/loader.py:from .types import PluginEntry, PluginScope
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/loader.py:            mod = _import_plugin_module(entry, module_name)
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/loader.py:    from tool_registry import register_tool, ToolDef
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/loader.py:            mod = _import_plugin_module(entry, module_name)
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/loader.py:def _import_plugin_module(entry: PluginEntry, module_name: str):
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/loader.py:    """Dynamically import a module from a plugin directory."""
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/loader.py:            spec = importlib.util.spec_from_file_location(unique_name, candidate)
+01_SRC/2024-06-19_CLAW_PLUGIN_V01/loader.py:                mod = importlib.util.module_from_spec(spec)
+01_SRC/2024-06-19_CLAW_CLOUDSAVE_V01.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_CLOUDSAVE_V01.py:import json
+01_SRC/2024-06-19_CLAW_CLOUDSAVE_V01.py:import urllib.request
+01_SRC/2024-06-19_CLAW_CLOUDSAVE_V01.py:import urllib.error
+01_SRC/2024-06-19_CLAW_CLOUDSAVE_V01.py:from datetime import datetime
+01_SRC/2024-06-19_CLAW_ERROR_UTILS_V01.py:import asyncio
+01_SRC/2024-06-19_CLAW_ERROR_UTILS_V01.py:import functools
+01_SRC/2024-06-19_CLAW_ERROR_UTILS_V01.py:import logging
+01_SRC/2024-06-19_CLAW_ERROR_UTILS_V01.py:import sys
+01_SRC/2024-06-19_CLAW_ERROR_UTILS_V01.py:import traceback
+01_SRC/2024-06-19_CLAW_ERROR_UTILS_V01.py:from typing import Any, Callable, Coroutine, Optional, TypeVar
+01_SRC/mcp/tools.py:from __future__ import annotations
+01_SRC/mcp/tools.py:import threading
+01_SRC/mcp/tools.py:from typing import Dict, List, Optional
+01_SRC/mcp/tools.py:from CLAW_2024_06_19_TOOL_REGISTRY_V01 import ToolDef, register_tool
+01_SRC/mcp/tools.py:from .client import MCPClient, MCPManager, get_mcp_manager
+01_SRC/mcp/tools.py:from .config import load_mcp_configs
+01_SRC/mcp/tools.py:from .types import MCPServerConfig, MCPTool
+01_SRC/mcp/tools.py:# ── Auto-initialize on import ─────────────────────────────────────────────────
+01_SRC/mcp/__init__.py:from .types import MCPServerConfig, MCPTool, MCPServerState, MCPTransport  # noqa: F401
+01_SRC/mcp/__init__.py:from .client import MCPClient, MCPManager, get_mcp_manager                 # noqa: F401
+01_SRC/mcp/__init__.py:from .config import (                                                       # noqa: F401
+01_SRC/mcp/__init__.py:from .tools import initialize_mcp, reload_mcp, refresh_server              # noqa: F401
+01_SRC/mcp/config.py:from __future__ import annotations
+01_SRC/mcp/config.py:import json
+01_SRC/mcp/config.py:from pathlib import Path
+01_SRC/mcp/config.py:from typing import Dict, List
+01_SRC/mcp/config.py:from .types import MCPServerConfig
+01_SRC/mcp/types.py:from __future__ import annotations
+01_SRC/mcp/types.py:from dataclasses import dataclass, field
+01_SRC/mcp/types.py:from enum import Enum
+01_SRC/mcp/types.py:from typing import Any, Dict, List, Optional
+01_SRC/mcp/client.py:from __future__ import annotations
+01_SRC/mcp/client.py:import json
+01_SRC/mcp/client.py:import os
+01_SRC/mcp/client.py:import subprocess
+01_SRC/mcp/client.py:import threading
+01_SRC/mcp/client.py:import time
+01_SRC/mcp/client.py:from typing import Any, Dict, List, Optional
+01_SRC/mcp/client.py:from .types import (
+01_SRC/mcp/client.py:                import httpx
+01_SRC/mcp/client.py:        import httpx
+01_SRC/2024-06-19_CLAW_SUBAGENT_SHIM_V01.py:from multi_agent.subagent import (  # noqa: F401
+01_SRC/2024-06-19_CLAW_MAIN_V01.py:import sys
+01_SRC/2024-06-19_CLAW_MAIN_V01.py:import os
+01_SRC/2024-06-19_CLAW_MAIN_V01.py:import asyncio
+01_SRC/2024-06-19_CLAW_MAIN_V01.py:import logging
+01_SRC/2024-06-19_CLAW_MAIN_V01.py:import signal
+01_SRC/2024-06-19_CLAW_MAIN_V01.py:import uuid
+01_SRC/2024-06-19_CLAW_MAIN_V01.py:from pathlib import Path
+01_SRC/2024-06-19_CLAW_MAIN_V01.py:from typing import Optional
+01_SRC/2024-06-19_CLAW_MAIN_V01.py:from encoding import configure_encoding, safe_print
+01_SRC/2024-06-19_CLAW_MAIN_V01.py:from thinking import construir_params_thinking, modelo_soporta_thinking
+01_SRC/2024-06-19_CLAW_MAIN_V01.py:from memory import guardar_memoria_auto, cargar_sesion
+01_SRC/2024-06-19_CLAW_MAIN_V01.py:from error_utils import tarea_segura, ejecutar_hook_seguro, TareaConCancelacion
+01_SRC/2024-06-19_CLAW_MAIN_V01.py:            import anthropic
+01_SRC/2024-06-19_CLAW_COMPACTION_V01.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_COMPACTION_V01.py:import CLAW_2024_06_19_PROVIDERS_V01 as providers
+01_SRC/2024-06-19_CLAW_AGENT_V01.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_AGENT_V01.py:import uuid
+01_SRC/2024-06-19_CLAW_AGENT_V01.py:from dataclasses import dataclass, field
+01_SRC/2024-06-19_CLAW_AGENT_V01.py:from typing import Generator
+01_SRC/2024-06-19_CLAW_AGENT_V01.py:from CLAW_2024_06_19_TOOL_REGISTRY_V01 import get_tool_schemas
+01_SRC/2024-06-19_CLAW_AGENT_V01.py:from CLAW_2024_06_19_TOOLS_V01 import execute_tool
+01_SRC/2024-06-19_CLAW_AGENT_V01.py:import CLAW_2024_06_19_TOOLS_V01 as _tools_init  # ensure built-in tools are registered on import
+01_SRC/2024-06-19_CLAW_AGENT_V01.py:from CLAW_2024_06_19_PROVIDERS_V01 import stream, AssistantTurn, TextChunk, ThinkingChunk, detect_provider
+01_SRC/2024-06-19_CLAW_AGENT_V01.py:from CLAW_2024_06_19_COMPACTION_V01 import maybe_compact
+01_SRC/2024-06-19_CLAW_AGENT_V01.py:        from CLAW_2024_06_19_TOOLS_V01 import _is_safe_bash
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:import json
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:import os
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:import re
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:import glob as _glob
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:import difflib
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:import subprocess
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:import threading
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:from pathlib import Path
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:from typing import Callable, Optional
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:from tool_registry import ToolDef, register_tool
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:from tool_registry import execute_tool as _registry_execute
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:        import httpx
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:        import httpx
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:            import random, string
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:    import threading
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:        import time
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:# Defined in memory/tools.py; importing registers them automatically.
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:import memory.tools as _memory_tools  # noqa: F401
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:# Defined in multi_agent/tools.py; importing registers them automatically.
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:import multi_agent.tools as _multiagent_tools  # noqa: F401
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:from multi_agent.tools import get_agent_manager as _get_agent_manager  # noqa: F401
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:# Defined in skill/tools.py; importing registers them automatically.
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:import skill.tools as _skill_tools  # noqa: F401
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:import mcp.tools as _mcp_tools  # noqa: F401
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:    from plugin.loader import register_plugin_tools as _reg_plugin_tools
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:# task/tools.py registers all four tools into the central registry on import.
+01_SRC/2024-06-19_CLAW_TOOLS_V01.py:import task.tools as _task_tools  # noqa: F401
+01_SRC/task/tools.py:from __future__ import annotations
+01_SRC/task/tools.py:from CLAW_2024_06_19_TOOL_REGISTRY_V01 import ToolDef, register_tool
+01_SRC/task/tools.py:from .store import create_task, get_task, list_tasks, update_task, delete_task
+01_SRC/task/tools.py:from .types import TaskStatus
+01_SRC/task/__init__.py:from .types import Task, TaskStatus
+01_SRC/task/__init__.py:from .store import (
+01_SRC/task/types.py:from __future__ import annotations
+01_SRC/task/types.py:from dataclasses import dataclass, field
+01_SRC/task/types.py:from datetime import datetime
+01_SRC/task/types.py:from enum import Enum
+01_SRC/task/types.py:from typing import Any
+01_SRC/task/store.py:from __future__ import annotations
+01_SRC/task/store.py:import json
+01_SRC/task/store.py:import threading
+01_SRC/task/store.py:import uuid
+01_SRC/task/store.py:from datetime import datetime
+01_SRC/task/store.py:from pathlib import Path
+01_SRC/task/store.py:from typing import Any
+01_SRC/task/store.py:from .types import Task, TaskStatus
+01_SRC/voice/recorder.py:from __future__ import annotations
+01_SRC/voice/recorder.py:import io
+01_SRC/voice/recorder.py:import shutil
+01_SRC/voice/recorder.py:import subprocess
+01_SRC/voice/recorder.py:import threading
+01_SRC/voice/recorder.py:from pathlib import Path
+01_SRC/voice/recorder.py:        import sounddevice  # noqa: F401
+01_SRC/voice/recorder.py:    import sounddevice as sd
+01_SRC/voice/recorder.py:    import numpy as np
+01_SRC/voice/recorder.py:    import numpy as np
+01_SRC/voice/recorder.py:        import sounddevice  # noqa: F401
+01_SRC/voice/recorder.py:            import numpy  # noqa: F401
+01_SRC/voice/keyterms.py:from __future__ import annotations
+01_SRC/voice/keyterms.py:import re
+01_SRC/voice/keyterms.py:import subprocess
+01_SRC/voice/keyterms.py:from pathlib import Path
+01_SRC/voice/__init__.py:from .recorder import check_recording_availability, record_until_silence
+01_SRC/voice/__init__.py:from .stt import check_stt_availability, transcribe
+01_SRC/voice/__init__.py:from .keyterms import get_voice_keyterms
+01_SRC/voice/stt.py:from __future__ import annotations
+01_SRC/voice/stt.py:import io
+01_SRC/voice/stt.py:import os
+01_SRC/voice/stt.py:import struct
+01_SRC/voice/stt.py:import tempfile
+01_SRC/voice/stt.py:from pathlib import Path
+01_SRC/voice/stt.py:from typing import List, Optional
+01_SRC/voice/stt.py:from .recorder import SAMPLE_RATE, CHANNELS, BYTES_PER_SAMPLE
+01_SRC/voice/stt.py:        import faster_whisper  # noqa: F401
+01_SRC/voice/stt.py:        import whisper  # noqa: F401
+01_SRC/voice/stt.py:        import faster_whisper  # noqa: F401
+01_SRC/voice/stt.py:        import whisper  # noqa: F401
+01_SRC/voice/stt.py:        from faster_whisper import WhisperModel
+01_SRC/voice/stt.py:        import torch
+01_SRC/voice/stt.py:        import ctranslate2
+01_SRC/voice/stt.py:    import numpy as np
+01_SRC/voice/stt.py:        import whisper
+01_SRC/voice/stt.py:    import numpy as np
+01_SRC/voice/stt.py:    from openai import OpenAI
+01_SRC/voice/stt.py:        import faster_whisper  # noqa: F401
+01_SRC/voice/stt.py:        import whisper  # noqa: F401
+01_SRC/plugin/__init__.py:from .types import PluginManifest, PluginEntry, PluginScope, parse_plugin_identifier
+01_SRC/plugin/__init__.py:from .store import (
+01_SRC/plugin/__init__.py:from .loader import (
+01_SRC/plugin/__init__.py:from .recommend import recommend_plugins, recommend_from_files, format_recommendations
+01_SRC/plugin/types.py:from __future__ import annotations
+01_SRC/plugin/types.py:import re
+01_SRC/plugin/types.py:from dataclasses import dataclass, field
+01_SRC/plugin/types.py:from enum import Enum
+01_SRC/plugin/types.py:from pathlib import Path
+01_SRC/plugin/types.py:from typing import Any
+01_SRC/plugin/types.py:            import json
+01_SRC/plugin/types.py:            import yaml  # type: ignore
+01_SRC/plugin/recommend.py:from __future__ import annotations
+01_SRC/plugin/recommend.py:import re
+01_SRC/plugin/recommend.py:from dataclasses import dataclass
+01_SRC/plugin/recommend.py:from pathlib import Path
+01_SRC/plugin/recommend.py:from typing import Any
+01_SRC/plugin/recommend.py:from .types import PluginManifest, PluginScope
+01_SRC/plugin/recommend.py:from .store import list_plugins, USER_PLUGIN_DIR
+01_SRC/plugin/store.py:from __future__ import annotations
+01_SRC/plugin/store.py:import json
+01_SRC/plugin/store.py:import shutil
+01_SRC/plugin/store.py:import subprocess
+01_SRC/plugin/store.py:import sys
+01_SRC/plugin/store.py:from pathlib import Path
+01_SRC/plugin/store.py:from typing import Any
+01_SRC/plugin/store.py:from .types import PluginEntry, PluginManifest, PluginScope, parse_plugin_identifier, sanitize_plugin_name
+01_SRC/plugin/loader.py:from __future__ import annotations
+01_SRC/plugin/loader.py:import importlib.util
+01_SRC/plugin/loader.py:import sys
+01_SRC/plugin/loader.py:from pathlib import Path
+01_SRC/plugin/loader.py:from .store import list_plugins
+01_SRC/plugin/loader.py:from .types import PluginEntry, PluginScope
+01_SRC/plugin/loader.py:            mod = _import_plugin_module(entry, module_name)
+01_SRC/plugin/loader.py:    from CLAW_2024_06_19_TOOL_REGISTRY_V01 import register_tool, ToolDef
+01_SRC/plugin/loader.py:            mod = _import_plugin_module(entry, module_name)
+01_SRC/plugin/loader.py:def _import_plugin_module(entry: PluginEntry, module_name: str):
+01_SRC/plugin/loader.py:    """Dynamically import a module from a plugin directory."""
+01_SRC/plugin/loader.py:            spec = importlib.util.spec_from_file_location(unique_name, candidate)
+01_SRC/plugin/loader.py:                mod = importlib.util.module_from_spec(spec)
+01_SRC/2024-06-19_CLAW_SKILL_V01/tools.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_SKILL_V01/tools.py:from tool_registry import ToolDef, register_tool
+01_SRC/2024-06-19_CLAW_SKILL_V01/tools.py:from .loader import find_skill, load_skills, substitute_arguments
+01_SRC/2024-06-19_CLAW_SKILL_V01/tools.py:    import agent as _agent
+01_SRC/2024-06-19_CLAW_SKILL_V01/__init__.py:from .loader import (  # noqa: F401
+01_SRC/2024-06-19_CLAW_SKILL_V01/__init__.py:from .executor import execute_skill  # noqa: F401
+01_SRC/2024-06-19_CLAW_SKILL_V01/__init__.py:from . import builtin as _builtin  # noqa: F401
+01_SRC/2024-06-19_CLAW_SKILL_V01/builtin.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_SKILL_V01/builtin.py:from .loader import SkillDef, register_builtin_skill
+01_SRC/2024-06-19_CLAW_SKILL_V01/executor.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_SKILL_V01/executor.py:from typing import Generator
+01_SRC/2024-06-19_CLAW_SKILL_V01/executor.py:from .loader import SkillDef, substitute_arguments
+01_SRC/2024-06-19_CLAW_SKILL_V01/executor.py:    import agent as _agent
+01_SRC/2024-06-19_CLAW_SKILL_V01/executor.py:    import agent as _agent
+01_SRC/2024-06-19_CLAW_SKILL_V01/loader.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_SKILL_V01/loader.py:from dataclasses import dataclass, field
+01_SRC/2024-06-19_CLAW_SKILL_V01/loader.py:from pathlib import Path
+01_SRC/2024-06-19_CLAW_SKILL_V01/loader.py:from typing import Optional
+01_SRC/multi_agent/tools.py:from __future__ import annotations
+01_SRC/multi_agent/tools.py:from CLAW_2024_06_19_TOOL_REGISTRY_V01 import ToolDef, register_tool
+01_SRC/multi_agent/tools.py:from .subagent import SubAgentManager, get_agent_definition, load_agent_definitions
+01_SRC/multi_agent/__init__.py:from .subagent import (
+01_SRC/multi_agent/subagent.py:from __future__ import annotations
+01_SRC/multi_agent/subagent.py:import os
+01_SRC/multi_agent/subagent.py:import uuid
+01_SRC/multi_agent/subagent.py:import queue
+01_SRC/multi_agent/subagent.py:import subprocess
+01_SRC/multi_agent/subagent.py:import tempfile
+01_SRC/multi_agent/subagent.py:from concurrent.futures import ThreadPoolExecutor, Future
+01_SRC/multi_agent/subagent.py:from dataclasses import dataclass, field
+01_SRC/multi_agent/subagent.py:from pathlib import Path
+01_SRC/multi_agent/subagent.py:from typing import Dict, List, Optional, Any
+01_SRC/multi_agent/subagent.py:                import yaml as _yaml
+01_SRC/multi_agent/subagent.py:    """Lazy-import wrapper to avoid circular dependency with agent module.
+01_SRC/multi_agent/subagent.py:    Uses absolute import so this works whether called from inside or outside
+01_SRC/multi_agent/subagent.py:    import CLAW_2024_06_19_AGENT_V01 as _agent_mod
+01_SRC/multi_agent/subagent.py:            import CLAW_2024_06_19_AGENT_V01 as _agent_mod; AgentState = _agent_mod.AgentState
+01_SRC/2024-06-19_CLAW_SKILLS_SHIM_V01.py:from skill.loader import (  # noqa: F401
+01_SRC/2024-06-19_CLAW_SKILLS_SHIM_V01.py:from skill.executor import execute_skill  # noqa: F401
+01_SRC/2024-06-19_CLAW_SKILLS_SHIM_V01.py:from skill.loader import _get_skill_paths as _gsp
+01_SRC/2024-06-19_CLAW_TOOL_REGISTRY_V01.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_TOOL_REGISTRY_V01.py:from dataclasses import dataclass
+01_SRC/2024-06-19_CLAW_TOOL_REGISTRY_V01.py:from typing import Any, Callable, Dict, List, Optional
+01_SRC/2024-06-19_CLAW_CONTEXT_V01.py:import os
+01_SRC/2024-06-19_CLAW_CONTEXT_V01.py:import subprocess
+01_SRC/2024-06-19_CLAW_CONTEXT_V01.py:from pathlib import Path
+01_SRC/2024-06-19_CLAW_CONTEXT_V01.py:from datetime import datetime
+01_SRC/2024-06-19_CLAW_CONTEXT_V01.py:from CLAW_2024_06_19_MEMORY_SHIM_V01 import get_memory_context
+01_SRC/2024-06-19_CLAW_CONTEXT_V01.py:    import platform
+01_SRC/2024-06-19_CLAW_ALTERNATIVE_V01.py:# ██ INICIO SEGURO — UTF-8 ANTES de cualquier import que use print/logging ██
+01_SRC/2024-06-19_CLAW_ALTERNATIVE_V01.py:import sys
+01_SRC/2024-06-19_CLAW_ALTERNATIVE_V01.py:import os
+01_SRC/2024-06-19_CLAW_ALTERNATIVE_V01.py:import asyncio
+01_SRC/2024-06-19_CLAW_ALTERNATIVE_V01.py:import argparse
+01_SRC/2024-06-19_CLAW_ALTERNATIVE_V01.py:import logging
+01_SRC/2024-06-19_CLAW_ALTERNATIVE_V01.py:import signal
+01_SRC/2024-06-19_CLAW_ALTERNATIVE_V01.py:import uuid
+01_SRC/2024-06-19_CLAW_ALTERNATIVE_V01.py:from datetime import datetime
+01_SRC/2024-06-19_CLAW_ALTERNATIVE_V01.py:from pathlib import Path
+01_SRC/2024-06-19_CLAW_ALTERNATIVE_V01.py:from typing import Optional
+01_SRC/2024-06-19_CLAW_ALTERNATIVE_V01.py:from encoding   import configure_encoding, safe_print
+01_SRC/2024-06-19_CLAW_ALTERNATIVE_V01.py:from thinking   import construir_params_thinking, modelo_soporta_thinking
+01_SRC/2024-06-19_CLAW_ALTERNATIVE_V01.py:from memory     import guardar_memoria_auto, cargar_sesion, listar_sesiones
+01_SRC/2024-06-19_CLAW_ALTERNATIVE_V01.py:from error_utils import tarea_segura, TareaConCancelacion
+01_SRC/2024-06-19_CLAW_ALTERNATIVE_V01.py:from claw_personalidad import (
+01_SRC/2024-06-19_CLAW_ALTERNATIVE_V01.py:            import json
+01_SRC/2024-06-19_CLAW_ALTERNATIVE_V01.py:            import anthropic
+01_SRC/2024-06-19_CLAW_ALTERNATIVE_V01.py:            from rich.console import Console
+01_SRC/2024-06-19_CLAW_ALTERNATIVE_V01.py:            from rich.markdown import Markdown
+01_SRC/2024-06-19_CLAW_AGENT_CORE_V01.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_AGENT_CORE_V01.py:import uuid
+01_SRC/2024-06-19_CLAW_AGENT_CORE_V01.py:from dataclasses import dataclass, field
+01_SRC/2024-06-19_CLAW_AGENT_CORE_V01.py:from typing import Generator
+01_SRC/2024-06-19_CLAW_AGENT_CORE_V01.py:from tool_registry import get_tool_schemas
+01_SRC/2024-06-19_CLAW_AGENT_CORE_V01.py:from tools import execute_tool
+01_SRC/2024-06-19_CLAW_AGENT_CORE_V01.py:import tools as _tools_init  # ensure built-in tools are registered on import
+01_SRC/2024-06-19_CLAW_AGENT_CORE_V01.py:from providers import stream, AssistantTurn, TextChunk, ThinkingChunk, detect_provider
+01_SRC/2024-06-19_CLAW_AGENT_CORE_V01.py:from compaction import maybe_compact
+01_SRC/2024-06-19_CLAW_AGENT_CORE_V01.py:        from tools import _is_safe_bash
+01_SRC/2024-06-19_CLAW_TASK_V01/tools.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_TASK_V01/tools.py:from tool_registry import ToolDef, register_tool
+01_SRC/2024-06-19_CLAW_TASK_V01/tools.py:from .store import create_task, get_task, list_tasks, update_task, delete_task
+01_SRC/2024-06-19_CLAW_TASK_V01/tools.py:from .types import TaskStatus
+01_SRC/2024-06-19_CLAW_TASK_V01/__init__.py:from .types import Task, TaskStatus
+01_SRC/2024-06-19_CLAW_TASK_V01/__init__.py:from .store import (
+01_SRC/2024-06-19_CLAW_TASK_V01/types.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_TASK_V01/types.py:from dataclasses import dataclass, field
+01_SRC/2024-06-19_CLAW_TASK_V01/types.py:from datetime import datetime
+01_SRC/2024-06-19_CLAW_TASK_V01/types.py:from enum import Enum
+01_SRC/2024-06-19_CLAW_TASK_V01/types.py:from typing import Any
+01_SRC/2024-06-19_CLAW_TASK_V01/store.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_TASK_V01/store.py:import json
+01_SRC/2024-06-19_CLAW_TASK_V01/store.py:import threading
+01_SRC/2024-06-19_CLAW_TASK_V01/store.py:import uuid
+01_SRC/2024-06-19_CLAW_TASK_V01/store.py:from datetime import datetime
+01_SRC/2024-06-19_CLAW_TASK_V01/store.py:from pathlib import Path
+01_SRC/2024-06-19_CLAW_TASK_V01/store.py:from typing import Any
+01_SRC/2024-06-19_CLAW_TASK_V01/store.py:from .types import Task, TaskStatus
+01_SRC/context.py:import os
+01_SRC/context.py:import subprocess
+01_SRC/context.py:from pathlib import Path
+01_SRC/context.py:from datetime import datetime
+01_SRC/context.py:from memory import get_memory_context
+01_SRC/context.py:    import platform
+01_SRC/memory/tools.py:from __future__ import annotations
+01_SRC/memory/tools.py:from datetime import datetime
+01_SRC/memory/tools.py:from CLAW_2024_06_19_TOOL_REGISTRY_V01 import ToolDef, register_tool
+01_SRC/memory/tools.py:from .store import MemoryEntry, save_memory, delete_memory, load_index, check_conflict, touch_last_used
+01_SRC/memory/tools.py:from .context import find_relevant_memories
+01_SRC/memory/tools.py:from .scan import scan_all_memories, format_memory_manifest
+01_SRC/memory/tools.py:    import math, time as _time
+01_SRC/memory/tools.py:    from .store import load_entries
+01_SRC/memory/scan.py:from __future__ import annotations
+01_SRC/memory/scan.py:import math
+01_SRC/memory/scan.py:import time
+01_SRC/memory/scan.py:from dataclasses import dataclass
+01_SRC/memory/scan.py:from pathlib import Path
+01_SRC/memory/scan.py:from .store import get_memory_dir, parse_frontmatter, INDEX_FILENAME
+01_SRC/memory/__init__.py:from .store import (  # noqa: F401
+01_SRC/memory/__init__.py:from .scan import (  # noqa: F401
+01_SRC/memory/__init__.py:from .context import (  # noqa: F401
+01_SRC/memory/__init__.py:from .types import (  # noqa: F401
+01_SRC/memory/__init__.py:from .consolidator import consolidate_session  # noqa: F401
+01_SRC/memory/context.py:from __future__ import annotations
+01_SRC/memory/context.py:from pathlib import Path
+01_SRC/memory/context.py:from .store import (
+01_SRC/memory/context.py:from .scan import scan_all_memories, format_memory_manifest, memory_freshness_text
+01_SRC/memory/context.py:from .types import MEMORY_SYSTEM_PROMPT
+01_SRC/memory/context.py:        from .scan import scan_all_memories
+01_SRC/memory/context.py:        from CLAW_2024_06_19_PROVIDERS_V01 import stream, AssistantTurn
+01_SRC/memory/context.py:        from .scan import scan_all_memories
+01_SRC/memory/context.py:        import json as _json
+01_SRC/memory/consolidator.py:from __future__ import annotations
+01_SRC/memory/consolidator.py:from datetime import datetime
+01_SRC/memory/consolidator.py:        from CLAW_2024_06_19_PROVIDERS_V01 import stream, AssistantTurn
+01_SRC/memory/consolidator.py:        from .store import MemoryEntry, save_memory, check_conflict
+01_SRC/memory/consolidator.py:        import json
+01_SRC/memory/store.py:from __future__ import annotations
+01_SRC/memory/store.py:import re
+01_SRC/memory/store.py:from dataclasses import dataclass
+01_SRC/memory/store.py:from pathlib import Path
+01_SRC/memory/store.py:    from datetime import date
+01_SRC/clawspring (1).py:from __future__ import annotations
+01_SRC/clawspring (1).py:import sys as _sys, os as _os
+01_SRC/clawspring (1).py:import os
+01_SRC/clawspring (1).py:import re
+01_SRC/clawspring (1).py:import sys
+01_SRC/clawspring (1).py:        import subprocess as _sp
+01_SRC/clawspring (1).py:import json
+01_SRC/clawspring (1).py:    import readline
+01_SRC/clawspring (1).py:import atexit
+01_SRC/clawspring (1).py:import argparse
+01_SRC/clawspring (1).py:import textwrap
+01_SRC/clawspring (1).py:from pathlib import Path
+01_SRC/clawspring (1).py:from datetime import datetime
+01_SRC/clawspring (1).py:from typing import Optional, Union
+01_SRC/clawspring (1).py:import threading
+01_SRC/clawspring (1).py:    from rich.console import Console
+01_SRC/clawspring (1).py:    from rich.markdown import Markdown
+01_SRC/clawspring (1).py:    from rich.live import Live
+01_SRC/clawspring (1).py:    from rich.syntax import Syntax
+01_SRC/clawspring (1).py:    from rich.panel import Panel
+01_SRC/clawspring (1).py:    from rich import print as rprint
+01_SRC/clawspring (1).py:    import random
+01_SRC/clawspring (1).py:    import random
+01_SRC/clawspring (1).py:import time
+01_SRC/clawspring (1).py:import traceback
+01_SRC/clawspring (1).py:    from providers import PROVIDERS, detect_provider
+01_SRC/clawspring (1).py:        from config import save_config
+01_SRC/clawspring (1).py:    from providers import stream, TextChunk
+01_SRC/clawspring (1).py:    import json
+01_SRC/clawspring (1).py:    from providers import PROVIDERS, list_ollama_models
+01_SRC/clawspring (1).py:            from config import save_config
+01_SRC/clawspring (1).py:    from providers import stream
+01_SRC/clawspring (1).py:    import time
+01_SRC/clawspring (1).py:    from pathlib import Path
+01_SRC/clawspring (1).py:            from faker import Faker
+01_SRC/clawspring (1).py:            import random
+01_SRC/clawspring (1).py:            from providers import TextChunk
+01_SRC/clawspring (1).py:    from pathlib import Path
+01_SRC/clawspring (1).py:    from config import save_config
+01_SRC/clawspring (1).py:    from config import SESSIONS_DIR
+01_SRC/clawspring (1).py:    import uuid
+01_SRC/clawspring (1).py:    from config import MR_SESSION_DIR, DAILY_DIR, SESSION_HIST_FILE
+01_SRC/clawspring (1).py:    import uuid
+01_SRC/clawspring (1).py:    from config import SESSIONS_DIR, MR_SESSION_DIR, DAILY_DIR
+01_SRC/clawspring (1).py:        from config import SESSION_HIST_FILE
+01_SRC/clawspring (1).py:    from config import MR_SESSION_DIR
+01_SRC/clawspring (1).py:    import anthropic
+01_SRC/clawspring (1).py:    from config import calc_cost
+01_SRC/clawspring (1).py:    from config import save_config
+01_SRC/clawspring (1).py:    from config import save_config
+01_SRC/clawspring (1).py:    from config import save_config
+01_SRC/clawspring (1).py:    import uuid
+01_SRC/clawspring (1).py:    from cloudsave import validate_token, upload_session, list_sessions, download_session
+01_SRC/clawspring (1).py:    from config import save_config
+01_SRC/clawspring (1).py:        from cloudsave import upload_session
+01_SRC/clawspring (1).py:        from config import save_config
+01_SRC/clawspring (1).py:    from memory import search_memory, load_index
+01_SRC/clawspring (1).py:    from memory.scan import scan_all_memories, format_memory_manifest, memory_freshness_text
+01_SRC/clawspring (1).py:        from memory import consolidate_session
+01_SRC/clawspring (1).py:        from multi_agent.tools import get_agent_manager
+01_SRC/clawspring (1).py:        from multi_agent.tools import get_agent_manager
+01_SRC/clawspring (1).py:    from skill import load_skills
+01_SRC/clawspring (1).py:    from mcp.client import get_mcp_manager
+01_SRC/clawspring (1).py:    from mcp.config import (load_mcp_configs, add_server_to_user_config,
+01_SRC/clawspring (1).py:    from mcp.tools import initialize_mcp, reload_mcp, refresh_server
+01_SRC/clawspring (1).py:    from plugin import (
+01_SRC/clawspring (1).py:        from pathlib import Path as _Path
+01_SRC/clawspring (1).py:            from plugin.recommend import recommend_from_files
+01_SRC/clawspring (1).py:    from task import list_tasks, get_task, create_task, update_task, delete_task, clear_all_tasks
+01_SRC/clawspring (1).py:    from task.types import TaskStatus
+01_SRC/clawspring (1).py:    from pathlib import Path
+01_SRC/clawspring (1).py:    import shlex
+01_SRC/clawspring (1).py:    from pathlib import Path
+01_SRC/clawspring (1).py:    import urllib.request, urllib.parse
+01_SRC/clawspring (1).py:    from config import save_config
+01_SRC/clawspring (1).py:            from voice import check_voice_deps, check_recording_availability, check_stt_availability
+01_SRC/clawspring (1).py:            from voice.stt import get_stt_backend_name
+01_SRC/clawspring (1).py:        from voice import check_voice_deps, voice_input as _voice_input
+01_SRC/clawspring (1).py:    import sys as _sys
+01_SRC/clawspring (1).py:        from PIL import ImageGrab
+01_SRC/clawspring (1).py:        import io, base64
+01_SRC/clawspring (1).py:    from skill import find_skill
+01_SRC/clawspring (1).py:    from config import HISTORY_FILE
+01_SRC/clawspring (1).py:    from context import build_system_prompt as _build_system_prompt_orig
+01_SRC/clawspring (1).py:    from agent import AgentState, run, TextChunk, ThinkingChunk, ToolStart, ToolEnd, TurnDone, PermissionRequest
+01_SRC/clawspring (1).py:        from claw_personalidad import build_system_prompt_claw as _build_sp_claw
+01_SRC/clawspring (1).py:        from claw_personalidad import saludo_inicio, contar_sesiones
+01_SRC/clawspring (1).py:        from providers import detect_provider
+01_SRC/clawspring (1).py:    import os as _os
+01_SRC/clawspring (1).py:                import urllib.error
+01_SRC/clawspring (1).py:                    from providers import detect_provider
+01_SRC/clawspring (1).py:        from tools import drain_pending_questions
+01_SRC/clawspring (1).py:        import select as _sel
+01_SRC/clawspring (1).py:            import time as _time
+01_SRC/clawspring (1).py:                import msvcrt
+01_SRC/clawspring (1).py:                import random as _random
+01_SRC/clawspring (1).py:                from skill import substitute_arguments
+01_SRC/clawspring (1).py:    from config import load_config, save_config, has_api_key
+01_SRC/clawspring (1).py:    from providers import detect_provider, PROVIDERS
+01_SRC/clawspring (1).py:            from providers import PROVIDERS
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/tools.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/tools.py:from datetime import datetime
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/tools.py:from tool_registry import ToolDef, register_tool
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/tools.py:from .store import MemoryEntry, save_memory, delete_memory, load_index, check_conflict, touch_last_used
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/tools.py:from .context import find_relevant_memories
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/tools.py:from .scan import scan_all_memories, format_memory_manifest
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/tools.py:    import math, time as _time
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/tools.py:    from .store import load_entries
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/scan.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/scan.py:import math
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/scan.py:import time
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/scan.py:from dataclasses import dataclass
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/scan.py:from pathlib import Path
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/scan.py:from .store import get_memory_dir, parse_frontmatter, INDEX_FILENAME
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/__init__.py:from .store import (  # noqa: F401
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/__init__.py:from .scan import (  # noqa: F401
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/__init__.py:from .context import (  # noqa: F401
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/__init__.py:from .types import (  # noqa: F401
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/__init__.py:from .consolidator import consolidate_session  # noqa: F401
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/context.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/context.py:from pathlib import Path
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/context.py:from .store import (
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/context.py:from .scan import scan_all_memories, format_memory_manifest, memory_freshness_text
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/context.py:from .types import MEMORY_SYSTEM_PROMPT
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/context.py:        from .scan import scan_all_memories
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/context.py:        from providers import stream, AssistantTurn
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/context.py:        from .scan import scan_all_memories
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/context.py:        import json as _json
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/consolidator.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/consolidator.py:from datetime import datetime
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/consolidator.py:        from providers import stream, AssistantTurn
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/consolidator.py:        from .store import MemoryEntry, save_memory, check_conflict
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/consolidator.py:        import json
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/store.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/store.py:import re
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/store.py:from dataclasses import dataclass
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/store.py:from pathlib import Path
+01_SRC/2024-06-19_CLAW_MEMORY_PACKAGE_V01/store.py:    from datetime import date
+01_SRC/2024-06-19_CLAW_CORE_V01.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_CORE_V01.py:import os
+01_SRC/2024-06-19_CLAW_CORE_V01.py:import re
+01_SRC/2024-06-19_CLAW_CORE_V01.py:import sys
+01_SRC/2024-06-19_CLAW_CORE_V01.py:import json
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    import readline
+01_SRC/2024-06-19_CLAW_CORE_V01.py:import atexit
+01_SRC/2024-06-19_CLAW_CORE_V01.py:import argparse
+01_SRC/2024-06-19_CLAW_CORE_V01.py:import textwrap
+01_SRC/2024-06-19_CLAW_CORE_V01.py:from pathlib import Path
+01_SRC/2024-06-19_CLAW_CORE_V01.py:from typing import Optional, Union
+01_SRC/2024-06-19_CLAW_CORE_V01.py:import threading
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from rich.console import Console
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from rich.markdown import Markdown
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from rich.live import Live
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from rich.syntax import Syntax
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from rich.panel import Panel
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from rich import print as rprint
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    import random
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    import random
+01_SRC/2024-06-19_CLAW_CORE_V01.py:import time
+01_SRC/2024-06-19_CLAW_CORE_V01.py:import traceback
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from CLAW_2024_06_19_PROVIDERS_V01 import PROVIDERS, detect_provider
+01_SRC/2024-06-19_CLAW_CORE_V01.py:        from CLAW_2024_06_19_CONFIG_V01 import save_config
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from CLAW_2024_06_19_PROVIDERS_V01 import stream, TextChunk
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    import json
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from CLAW_2024_06_19_PROVIDERS_V01 import PROVIDERS, list_ollama_models
+01_SRC/2024-06-19_CLAW_CORE_V01.py:            from CLAW_2024_06_19_CONFIG_V01 import save_config
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from CLAW_2024_06_19_PROVIDERS_V01 import stream
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    import time
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from pathlib import Path
+01_SRC/2024-06-19_CLAW_CORE_V01.py:            from faker import Faker
+01_SRC/2024-06-19_CLAW_CORE_V01.py:            import random
+01_SRC/2024-06-19_CLAW_CORE_V01.py:            from CLAW_2024_06_19_PROVIDERS_V01 import TextChunk
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from pathlib import Path
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from CLAW_2024_06_19_CONFIG_V01 import save_config
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from CLAW_2024_06_19_CONFIG_V01 import SESSIONS_DIR
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    import uuid
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from CLAW_2024_06_19_CONFIG_V01 import MR_SESSION_DIR, DAILY_DIR, SESSION_HIST_FILE
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    import uuid
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from CLAW_2024_06_19_CONFIG_V01 import SESSIONS_DIR, MR_SESSION_DIR, DAILY_DIR
+01_SRC/2024-06-19_CLAW_CORE_V01.py:        from CLAW_2024_06_19_CONFIG_V01 import SESSION_HIST_FILE
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from CLAW_2024_06_19_CONFIG_V01 import MR_SESSION_DIR
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    import anthropic
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from CLAW_2024_06_19_CONFIG_V01 import calc_cost
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from CLAW_2024_06_19_CONFIG_V01 import save_config
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from CLAW_2024_06_19_CONFIG_V01 import save_config
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from CLAW_2024_06_19_CONFIG_V01 import save_config
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    import uuid
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from CLAW_2024_06_19_CLOUDSAVE_V01 import validate_token, upload_session, list_sessions, download_session
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from CLAW_2024_06_19_CONFIG_V01 import save_config
+01_SRC/2024-06-19_CLAW_CORE_V01.py:        from CLAW_2024_06_19_CLOUDSAVE_V01 import upload_session
+01_SRC/2024-06-19_CLAW_CORE_V01.py:        from CLAW_2024_06_19_CONFIG_V01 import save_config
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from CLAW_2024_06_19_MEMORY_SHIM_V01 import search_memory, load_index
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from memory.scan import scan_all_memories, format_memory_manifest, memory_freshness_text
+01_SRC/2024-06-19_CLAW_CORE_V01.py:        from CLAW_2024_06_19_MEMORY_SHIM_V01 import consolidate_session
+01_SRC/2024-06-19_CLAW_CORE_V01.py:        from multi_agent.tools import get_agent_manager
+01_SRC/2024-06-19_CLAW_CORE_V01.py:        from multi_agent.tools import get_agent_manager
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from skill import load_skills
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from mcp.client import get_mcp_manager
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from mcp.config import (load_mcp_configs, add_server_to_user_config,
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from mcp.tools import initialize_mcp, reload_mcp, refresh_server
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from plugin import (
+01_SRC/2024-06-19_CLAW_CORE_V01.py:        from pathlib import Path as _Path
+01_SRC/2024-06-19_CLAW_CORE_V01.py:            from plugin.recommend import recommend_from_files
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from task import list_tasks, get_task, create_task, update_task, delete_task, clear_all_tasks
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from task.types import TaskStatus
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from pathlib import Path
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    import shlex
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from pathlib import Path
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    import urllib.request, urllib.parse
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from CLAW_2024_06_19_CONFIG_V01 import save_config
+01_SRC/2024-06-19_CLAW_CORE_V01.py:            from voice import check_voice_deps, check_recording_availability, check_stt_availability
+01_SRC/2024-06-19_CLAW_CORE_V01.py:            from voice.stt import get_stt_backend_name
+01_SRC/2024-06-19_CLAW_CORE_V01.py:        from voice import check_voice_deps, voice_input as _voice_input
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    import sys as _sys
+01_SRC/2024-06-19_CLAW_CORE_V01.py:        from PIL import ImageGrab
+01_SRC/2024-06-19_CLAW_CORE_V01.py:        import io, base64
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from skill import find_skill
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from CLAW_2024_06_19_CONFIG_V01 import HISTORY_FILE
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from CLAW_2024_06_19_CONTEXT_V01 import build_system_prompt
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from CLAW_2024_06_19_AGENT_V01 import AgentState, run, TextChunk, ThinkingChunk, ToolStart, ToolEnd, TurnDone, PermissionRequest
+01_SRC/2024-06-19_CLAW_CORE_V01.py:        from CLAW_2024_06_19_PROVIDERS_V01 import detect_provider
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    import os as _os
+01_SRC/2024-06-19_CLAW_CORE_V01.py:                import urllib.error
+01_SRC/2024-06-19_CLAW_CORE_V01.py:                    from CLAW_2024_06_19_PROVIDERS_V01 import detect_provider
+01_SRC/2024-06-19_CLAW_CORE_V01.py:        from CLAW_2024_06_19_TOOLS_V01 import drain_pending_questions
+01_SRC/2024-06-19_CLAW_CORE_V01.py:        import select as _sel
+01_SRC/2024-06-19_CLAW_CORE_V01.py:            import time as _time
+01_SRC/2024-06-19_CLAW_CORE_V01.py:                import msvcrt
+01_SRC/2024-06-19_CLAW_CORE_V01.py:                import random as _random
+01_SRC/2024-06-19_CLAW_CORE_V01.py:                from skill import substitute_arguments
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from CLAW_2024_06_19_CONFIG_V01 import load_config, save_config, has_api_key
+01_SRC/2024-06-19_CLAW_CORE_V01.py:    from CLAW_2024_06_19_PROVIDERS_V01 import detect_provider, PROVIDERS
+01_SRC/2024-06-19_CLAW_CORE_V01.py:            from CLAW_2024_06_19_PROVIDERS_V01 import PROVIDERS
+01_SRC/2024-06-19_CLAW_CORE_V01.py:import time as _sage_time
+01_SRC/2024-06-19_CLAW_PROVIDERS_V01.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_PROVIDERS_V01.py:import json
+01_SRC/2024-06-19_CLAW_PROVIDERS_V01.py:import logging
+01_SRC/2024-06-19_CLAW_PROVIDERS_V01.py:import os
+01_SRC/2024-06-19_CLAW_PROVIDERS_V01.py:import urllib.request
+01_SRC/2024-06-19_CLAW_PROVIDERS_V01.py:from typing import Generator
+01_SRC/2024-06-19_CLAW_PROVIDERS_V01.py:        import os
+01_SRC/2024-06-19_CLAW_PROVIDERS_V01.py:    import anthropic as _ant
+01_SRC/2024-06-19_CLAW_PROVIDERS_V01.py:    from openai import OpenAI
+01_SRC/2024-06-19_CLAW_PROVIDERS_V01.py:        import os as _os
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:from __future__ import annotations
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:import os
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:import re
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:import sys
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:        import subprocess as _sp
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:import json
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    import readline
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:import atexit
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:import argparse
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:import textwrap
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:from pathlib import Path
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:from datetime import datetime
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:from typing import Optional, Union
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:import threading
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from rich.console import Console
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from rich.markdown import Markdown
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from rich.live import Live
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from rich.syntax import Syntax
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from rich.panel import Panel
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from rich import print as rprint
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    import random
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    import random
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:import time
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:import traceback
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from providers import PROVIDERS, detect_provider
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:        from config import save_config
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from providers import stream, TextChunk
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    import json
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from providers import PROVIDERS, list_ollama_models
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:            from config import save_config
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from providers import stream
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    import time
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from pathlib import Path
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:            from faker import Faker
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:            import random
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:            from providers import TextChunk
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from pathlib import Path
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from config import save_config
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from config import SESSIONS_DIR
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    import uuid
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from config import MR_SESSION_DIR, DAILY_DIR, SESSION_HIST_FILE
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    import uuid
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from config import SESSIONS_DIR, MR_SESSION_DIR, DAILY_DIR
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:        from config import SESSION_HIST_FILE
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from config import MR_SESSION_DIR
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    import anthropic
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from config import calc_cost
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from config import save_config
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from config import save_config
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from config import save_config
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    import uuid
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from cloudsave import validate_token, upload_session, list_sessions, download_session
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from config import save_config
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:        from cloudsave import upload_session
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:        from config import save_config
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from memory import search_memory, load_index
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from memory.scan import scan_all_memories, format_memory_manifest, memory_freshness_text
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:        from memory import consolidate_session
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:        from multi_agent.tools import get_agent_manager
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:        from multi_agent.tools import get_agent_manager
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from skill import load_skills
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from mcp.client import get_mcp_manager
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from mcp.config import (load_mcp_configs, add_server_to_user_config,
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from mcp.tools import initialize_mcp, reload_mcp, refresh_server
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from plugin import (
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:        from pathlib import Path as _Path
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:            from plugin.recommend import recommend_from_files
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from task import list_tasks, get_task, create_task, update_task, delete_task, clear_all_tasks
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from task.types import TaskStatus
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from pathlib import Path
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    import shlex
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from pathlib import Path
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    import urllib.request, urllib.parse
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from config import save_config
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:            from voice import check_voice_deps, check_recording_availability, check_stt_availability
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:            from voice.stt import get_stt_backend_name
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:        from voice import check_voice_deps, voice_input as _voice_input
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    import sys as _sys
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:        from PIL import ImageGrab
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:        import io, base64
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from skill import find_skill
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from config import HISTORY_FILE
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from context import build_system_prompt
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from agent import AgentState, run, TextChunk, ThinkingChunk, ToolStart, ToolEnd, TurnDone, PermissionRequest
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:        from providers import detect_provider
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    import os as _os
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:                import urllib.error
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:                    from providers import detect_provider
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:        from tools import drain_pending_questions
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:        import select as _sel
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:            import time as _time
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:                import msvcrt
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:                import random as _random
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:                from skill import substitute_arguments
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from config import load_config, save_config, has_api_key
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:    from providers import detect_provider, PROVIDERS
+01_SRC/2024-06-19_CLAW_CLAWSPRING_CORE_V01.py:            from providers import PROVIDERS
+01_SRC/2024-06-19_CLAW_THINKING_V01.py:import os
+01_SRC/2024-06-19_CLAW_THINKING_V01.py:import logging
+01_SRC/2024-06-19_CLAW_THINKING_V01.py:from typing import Optional
+01_SRC/subagent.py:from multi_agent.subagent import (  # noqa: F401
+01_SRC/cloudsave.py:from __future__ import annotations
+01_SRC/cloudsave.py:import json
+01_SRC/cloudsave.py:import urllib.request
+01_SRC/cloudsave.py:import urllib.error
+01_SRC/cloudsave.py:from datetime import datetime
+00_SOPORTE/LICENSE:      use, offer to sell, sell, import, and otherwise transfer the Work,
+00_SOPORTE/2024-06-19_CLAW_CONFIG_V01.py:import os
+00_SOPORTE/2024-06-19_CLAW_CONFIG_V01.py:import json
+00_SOPORTE/2024-06-19_CLAW_CONFIG_V01.py:from pathlib import Path
+00_SOPORTE/2024-06-19_CLAW_CONFIG_V01.py:    from CLAW_2024_06_19_PROVIDERS_V01 import detect_provider
+00_SOPORTE/2024-06-19_CLAW_CONFIG_V01.py:    from CLAW_2024_06_19_PROVIDERS_V01 import get_api_key
+00_SOPORTE/2024-06-19_CLAW_CONFIG_V01.py:    from CLAW_2024_06_19_PROVIDERS_V01 import calc_cost as _cc
+00_SOPORTE/config.py:import os
+00_SOPORTE/config.py:import json
+00_SOPORTE/config.py:from pathlib import Path
+00_SOPORTE/config.py:    from providers import detect_provider
+00_SOPORTE/config.py:    from providers import get_api_key
+00_SOPORTE/config.py:    from providers import calc_cost as _cc
+run_claw.py:import sys
+run_claw.py:from pathlib import Path
+run_claw.py:import importlib
+run_claw.py:core = importlib.import_module("CLAW_2024_06_19_CORE_V01")

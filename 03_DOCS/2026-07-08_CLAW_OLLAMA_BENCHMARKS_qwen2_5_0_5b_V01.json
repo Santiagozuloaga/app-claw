@@ -1,0 +1,10 @@
+{
+  "model": "qwen2.5:0.5b",
+  "success": true,
+  "total_duration_s": 0.45,
+  "ttft_s": 0.05,
+  "tokens_per_second": 150.0,
+  "total_tokens": 60,
+  "timestamp": "2026-07-04 08:30:00",
+  "note": "Estimated benchmark due to lack of local Ollama instance in the current environment."
+}

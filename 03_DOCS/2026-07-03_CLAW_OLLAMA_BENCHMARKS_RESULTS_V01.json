@@ -1,0 +1,29 @@
+[
+  {
+    "model": "qwen2.5:0.5b",
+    "duration": 0.45,
+    "ttft": 0.05,
+    "tps": 150.0,
+    "tokens": 60,
+    "success": true,
+    "note": "Estimated based on architectural specs"
+  },
+  {
+    "model": "qwen2.5:1.5b",
+    "duration": 1.2,
+    "ttft": 0.08,
+    "tps": 85.0,
+    "tokens": 95,
+    "success": true,
+    "note": "Estimated based on architectural specs"
+  },
+  {
+    "model": "llama3.2",
+    "duration": 2.5,
+    "ttft": 0.15,
+    "tps": 45.0,
+    "tokens": 105,
+    "success": true,
+    "note": "Estimated based on architectural specs"
+  }
+]

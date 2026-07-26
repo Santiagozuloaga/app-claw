@@ -1,0 +1,1 @@
+ISO-SAGE naming conflict: format [AAAA-MM-DD]_[PROYECTO]_[DESCRIPCIÓN]_V[XX] vs incorrect [PROYECTO]_[AAAA_MM_DD]_. Standardize on date-first.

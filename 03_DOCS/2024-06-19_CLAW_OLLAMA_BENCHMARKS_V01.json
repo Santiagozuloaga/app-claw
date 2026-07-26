@@ -1,0 +1,18 @@
+[
+  {
+    "model": "ollama/qwen2.5:0.5b",
+    "ttft_ms": 500.2281665802002,
+    "total_time_s": 1.5005815029144287,
+    "tokens": 57,
+    "tps": 56.97986694268964,
+    "mocked": true
+  },
+  {
+    "model": "ollama/llama3.2:1b",
+    "ttft_ms": 500.1943111419678,
+    "total_time_s": 1.5005149841308594,
+    "tokens": 57,
+    "tps": 56.98172749913065,
+    "mocked": true
+  }
+]

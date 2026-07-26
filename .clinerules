@@ -1,0 +1,81 @@
+# Reglas de Programación E-SYSTEM - CLAW
+
+## Estándar P.A.R.A.
+
+Todo proyecto debe estar segmentado en:
+- **01_SRC/**: Código fuente
+- **02_TESTS/**: Pruebas unitarias
+- **03_DOCS/**: Documentación técnica
+- **04_ASSETS/**: Recursos estáticos
+- **00_SOPORTE/**: Logs, configuraciones, .env
+
+## Nomenclatura ISO-SAGE
+
+Todo archivo nuevo debe seguir el formato:
+`[AAAA-MM-DD]_[PROYECTO]_[DESCRIPCIÓN]_V[XX].[ext]`
+
+Ejemplos:
+- `2024-06-19_CLAW_CLAWSPRING_CORE_V01.py`
+- `2024-06-19_CLAW_MEMORY_V01.py`
+- `2024-06-19_CLAW_PROVIDERS_V01.py`
+
+## Independencia de Código
+
+Nunca mezcles lógica de negocio con configuración de entorno.
+- Configuración → 00_SOPORTE/
+- Lógica de negocio → 01_SRC/
+
+## Lenguaje y Estilo
+
+- **Lenguaje**: Python 3.12+
+- **Estilo**: Limpio, comentado bajo ISO-SAGE
+- **Jerarquía**: Siempre aplicar P.A.R.A.
+- **Al terminar**: El script debe verificar que el archivo renombrado cumpla con la fecha actual
+
+## Seguridad Física
+
+Si el script supera los 50 minutos de ejecución, añade un log de 'alerta de enfriamiento'.
+
+## Estructura de Proyecto
+
+```
+PROYECTO_CLAW/
+├── 00_SOPORTE/          # Logs, configuraciones, .env
+├── 01_SRC/              # Código lógico (separado por módulos)
+│   ├── main.py
+│   └── utils/
+├── 02_TESTS/            # Pruebas automatizadas (imprescindible)
+├── 03_DOCS/             # Documentación (markdown o diagramas)
+├── 04_ASSETS/           # Recursos estáticos
+└── README.md            # Guía de estilo y ejecución
+```
+
+## Salida por Defecto
+
+Al escribir código, siempre incluye un archivo README.md que explique cómo ejecutar el módulo según el estándar P.A.R.A.
+
+## Coordinación con IAs
+
+Sage coordina con:
+- ChatGPT (revisión código, bugs críticos)
+- VSC AI (corrección lanzadores, encoding)
+- Zencoder (integración Ollama, capacidades)
+- Antigravity (sistemas memoria hasta 25/6)
+- Jules (optimización, performance)
+- Opal (validación configuración)
+- Codex (bash tools, hooks hasta julio)
+- Stitch (pipeline voz - Fase 2)
+- Devin (colaboración general)
+- Aider (desarrollo código)
+
+Claude está excluido del juego.
+
+## Instrucciones para IAs
+
+Las instrucciones específicas para cada IA están en `03_DOCS/`:
+- `INSTRUCCIONES_JULES.md` - Instrucciones para Jules
+- `INSTRUCCIONES_AIDER.md` - Instrucciones para Aider
+- `INSTRUCCIONES_ZENCODER.md` - Instrucciones para Zencoder
+- `INSTRUCCIONES_VSC_AI.md` - Instrucciones para VSC AI
+- `INSTRUCCIONES_DEVIN.md` - Instrucciones para Devin
+- `COORDINACION_IAS.md` - Coordinación general de IAs
