@@ -8,343 +8,223 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.HourglassEmpty
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.clawcode.data.model.AgentTask
 import com.example.clawcode.data.model.Priority
 import com.example.clawcode.data.model.TaskStatus
-import com.example.clawcode.ui.components.AgentExecutionProgressBar
-import com.example.clawcode.ui.components.TaskItemCard
 import com.example.clawcode.ui.theme.*
+import com.example.clawcode.viewmodel.ClawViewModel
 
 @Composable
-fun TasksScreen(
-    tasks: List<AgentTask>,
-    onCreateTask: (String, String, String, Priority) -> Unit,
-    onRunTask: (String) -> Unit,
-    onCompleteTask: (String) -> Unit
-) {
-    var selectedFilter by remember { mutableStateOf<TaskStatus?>(null) }
-    var showCreateDialog by remember { mutableStateOf(false) }
-    var selectedTaskForDetails by remember { mutableStateOf<AgentTask?>(null) }
+fun TasksScreen(viewModel: ClawViewModel) {
+    val tasks by viewModel.tasks.collectAsState()
+    val palette = LocalDynamicThemePalette.current
 
-    val filteredTasks = remember(tasks, selectedFilter) {
-        if (selectedFilter == null) tasks else tasks.filter { it.status == selectedFilter }
-    }
+    var selectedTab by remember { mutableStateOf(0) }
+    val tabs = listOf("En Progreso", "Pendientes", "Completadas")
+    
+    var showAddTaskDialog by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Scaffold(
+        containerColor = palette.background,
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showAddTaskDialog = true },
+                containerColor = palette.primary,
+                contentColor = Color.Black
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Agregar Tarea")
+            }
+        }
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(innerPadding)
+                .background(palette.background)
         ) {
-            // Header & Filter Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            TabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = palette.background,
+                contentColor = palette.primary,
+                indicator = { tabPositions ->
+                    if (selectedTab < tabPositions.size) {
+                        TabRowDefaults.Indicator(
+                            Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                            color = palette.primary
+                        )
+                    }
+                }
             ) {
-                Text(
-                    text = "Gestor de Tareas & Agentes",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                )
-
-                IconButton(
-                    onClick = { showCreateDialog = true },
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(NeonEmerald)
-                        .size(38.dp)
-                        .testTag("btn_add_task")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "New Task",
-                        tint = DarkBackground
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTab == index,
+                        onClick = { selectedTab = index },
+                        text = {
+                            Text(
+                                text = title,
+                                color = if (selectedTab == index) palette.primary else TextMuted,
+                                fontSize = 12.sp,
+                                fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium
+                            )
+                        }
                     )
                 }
             }
-
-            // Filter Chips
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                FilterChip(
-                    selected = selectedFilter == null,
-                    onClick = { selectedFilter = null },
-                    label = { Text("Todas (${tasks.size})") },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = NeonTeal,
-                        selectedLabelColor = DarkBackground
-                    )
-                )
-
-                FilterChip(
-                    selected = selectedFilter == TaskStatus.RUNNING,
-                    onClick = { selectedFilter = TaskStatus.RUNNING },
-                    label = { Text("En Ejecución") },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = GreenRunning,
-                        selectedLabelColor = DarkBackground
-                    )
-                )
-
-                FilterChip(
-                    selected = selectedFilter == TaskStatus.PENDING,
-                    onClick = { selectedFilter = TaskStatus.PENDING },
-                    label = { Text("Pendientes") },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = BluePending,
-                        selectedLabelColor = DarkBackground
-                    )
-                )
-
-                FilterChip(
-                    selected = selectedFilter == TaskStatus.COMPLETED,
-                    onClick = { selectedFilter = TaskStatus.COMPLETED },
-                    label = { Text("Completadas") },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = NeonEmerald,
-                        selectedLabelColor = DarkBackground
-                    )
-                )
+            
+            val filteredTasks = tasks.filter {
+                when (selectedTab) {
+                    0 -> it.status == TaskStatus.RUNNING
+                    1 -> it.status == TaskStatus.PENDING
+                    2 -> it.status == TaskStatus.COMPLETED || it.status == TaskStatus.ERROR
+                    else -> true
+                }
             }
-
-            // Task List
+            
             if (filteredTasks.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "No se encontraron tareas con este filtro",
-                        color = TextMuted,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("No hay tareas en esta categoría.", color = TextMuted, fontSize = 14.sp)
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxSize().padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(filteredTasks) { task ->
-                        if (task.status == TaskStatus.RUNNING) {
-                            AgentExecutionProgressBar(
-                                task = task,
-                                estimatedCostUsd = 0.0000, // 100% On-device
-                                tokensPerSecond = 42.8f,
-                                onCancelTask = { taskId -> onCompleteTask(taskId) }
-                            )
-                        } else {
-                            TaskItemCard(
-                                task = task,
-                                onRunTask = onRunTask,
-                                onCompleteTask = onCompleteTask,
-                                onSelectTask = { selectedTaskForDetails = it }
-                            )
-                        }
+                        TaskCard(task, palette)
                     }
                 }
             }
         }
+    }
 
-        // Create Task Dialog
-        if (showCreateDialog) {
-            CreateTaskDialog(
-                onDismiss = { showCreateDialog = false },
-                onCreate = { title, desc, agent, priority ->
-                    onCreateTask(title, desc, agent, priority)
-                    showCreateDialog = false
+    if (showAddTaskDialog) {
+        var title by remember { mutableStateOf("") }
+        var description by remember { mutableStateOf("") }
+        
+        AlertDialog(
+            onDismissRequest = { showAddTaskDialog = false },
+            containerColor = palette.surface,
+            title = { Text("Nueva Tarea Autónoma", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = { title = it },
+                        label = { Text("Título de la tarea") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = palette.primary,
+                            unfocusedBorderColor = palette.border
+                        )
+                    )
+                    OutlinedTextField(
+                        value = description,
+                        onValueChange = { description = it },
+                        label = { Text("Instrucción / Prompt") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = palette.primary,
+                            unfocusedBorderColor = palette.border
+                        )
+                    )
                 }
-            )
-        }
-
-        // Task Detail Sheet / Dialog
-        selectedTaskForDetails?.let { task ->
-            TaskLogsDialog(
-                task = task,
-                onDismiss = { selectedTaskForDetails = null }
-            )
-        }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (title.isNotBlank()) {
+                            viewModel.createNewTask(title, description, "JARVIS", Priority.MEDIUM)
+                            showAddTaskDialog = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = palette.primary)
+                ) {
+                    Text("Crear Tarea", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddTaskDialog = false }) {
+                    Text("Cancelar", color = TextMuted)
+                }
+            }
+        )
     }
 }
 
 @Composable
-fun CreateTaskDialog(
-    onDismiss: () -> Unit,
-    onCreate: (String, String, String, Priority) -> Unit
-) {
-    var title by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var agentName by remember { mutableStateOf("Claw_Agent_v1") }
-    var priority by remember { mutableStateOf(Priority.MEDIUM) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = DarkSurface,
-        title = {
-            Text(
-                text = "Queue New Agent Task",
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Task Title") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("input_task_title"),
-                    singleLine = true
-                )
-
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Task Description") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("input_task_desc")
-                )
-
-                OutlinedTextField(
-                    value = agentName,
-                    onValueChange = { agentName = it },
-                    label = { Text("Subagent Identifier") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("input_agent_name"),
-                    singleLine = true
-                )
-
-                Text(
-                    text = "Priority Level",
-                    style = MaterialTheme.typography.labelMedium.copy(color = TextSecondary)
-                )
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Priority.entries.forEach { p ->
-                        FilterChip(
-                            selected = priority == p,
-                            onClick = { priority = p },
-                            label = { Text(p.name, fontSize = 10.sp) }
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (title.isNotBlank()) {
-                        onCreate(title, description, agentName, priority)
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = NeonEmerald),
-                modifier = Modifier.testTag("btn_submit_task")
-            ) {
-                Text("Enqueue Task", color = DarkBackground, fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = TextMuted)
-            }
-        }
-    )
-}
-
-@Composable
-fun TaskLogsDialog(
-    task: AgentTask,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = DarkSurface,
-        title = {
+fun TaskCard(task: AgentTask, palette: DynamicThemePalette) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, palette.border, RoundedCornerShape(12.dp)),
+        colors = CardDefaults.cardColors(containerColor = palette.surface)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = task.title,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                )
-                IconButton(onClick = onDismiss) {
-                    Icon(imageVector = Icons.Default.Close, contentDescription = "Close", tint = TextMuted)
+                Text(task.title, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                
+                val statusColor = when (task.status) {
+                    TaskStatus.RUNNING -> palette.primary
+                    TaskStatus.PENDING -> NeonAmber
+                    TaskStatus.COMPLETED -> NeonEmerald
+                    TaskStatus.ERROR -> RedError
                 }
-            }
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = "Task ID: ${task.id} | Agent: ${task.agentName}",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontFamily = FontFamily.Monospace,
-                        color = NeonTeal
-                    )
-                )
-
-                Text(
-                    text = "Execution Traceback Logs:",
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        color = TextSecondary,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 200.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(CodeBackground)
-                        .padding(10.dp)
+                
+                Surface(
+                    color = statusColor.copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(6.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, statusColor)
                 ) {
-                    task.logs.forEach { log ->
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        val icon = when(task.status) {
+                            TaskStatus.RUNNING -> Icons.Default.PlayArrow
+                            TaskStatus.PENDING -> Icons.Default.HourglassEmpty
+                            TaskStatus.COMPLETED -> Icons.Default.CheckCircle
+                            TaskStatus.ERROR -> Icons.Default.Error
+                        }
+                        Icon(icon, contentDescription = null, tint = statusColor, modifier = Modifier.size(10.dp))
                         Text(
-                            text = log,
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 11.sp,
-                                color = NeonEmerald
-                            )
+                            text = task.status.name,
+                            color = statusColor,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Close", color = NeonTeal)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(task.description, color = TextSecondary, fontSize = 13.sp)
+            
+            if (task.status == TaskStatus.RUNNING) {
+                Spacer(modifier = Modifier.height(12.dp))
+                LinearProgressIndicator(
+                    progress = { task.progress },
+                    modifier = Modifier.fillMaxWidth().height(4.dp),
+                    color = palette.primary,
+                    trackColor = palette.primary.copy(alpha = 0.15f)
+                )
             }
         }
-    )
+    }
 }

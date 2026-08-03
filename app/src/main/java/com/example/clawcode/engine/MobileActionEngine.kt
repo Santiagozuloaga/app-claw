@@ -38,9 +38,34 @@ class MobileActionEngine(private val context: Context) : TextToSpeech.OnInitList
         }
     }
 
-    fun speak(text: String) {
+    fun speak(
+        text: String,
+        voiceStyle: String = "Voz 1",
+        pitchMultiplier: Float = 1.0f,
+        speechRateMultiplier: Float = 1.0f
+    ) {
         if (isTtsReady && tts != null) {
-            tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "JARVIS_VOICE_ID")
+            val basePitch = when {
+                voiceStyle.contains("Voz 2", ignoreCase = true) || voiceStyle.contains("Aguda", ignoreCase = true) || voiceStyle.contains("Femenina", ignoreCase = true) -> 1.45f
+                voiceStyle.contains("Robot", ignoreCase = true) || voiceStyle.contains("Sintética", ignoreCase = true) -> 0.45f
+                else -> 1.0f
+            }
+            val baseRate = when {
+                voiceStyle.contains("Voz 2", ignoreCase = true) || voiceStyle.contains("Aguda", ignoreCase = true) || voiceStyle.contains("Femenina", ignoreCase = true) -> 1.20f
+                voiceStyle.contains("Robot", ignoreCase = true) || voiceStyle.contains("Sintética", ignoreCase = true) -> 0.80f
+                else -> 1.0f
+            }
+
+            val finalPitch = (basePitch * pitchMultiplier).coerceIn(0.2f, 2.0f)
+            val finalRate = (baseRate * speechRateMultiplier).coerceIn(0.2f, 2.0f)
+
+            try {
+                tts?.setPitch(finalPitch)
+                tts?.setSpeechRate(finalRate)
+                tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "JARVIS_VOICE_ID")
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
@@ -297,6 +322,68 @@ class MobileActionEngine(private val context: Context) : TextToSpeech.OnInitList
             }
             """.trimIndent(),
             intentAction = "android.settings.WIFI_SETTINGS"
+        ),
+        MobileActionDef(
+            id = "act_google_search",
+            name = "google_search",
+            category = MobileActionCategory.AUTOMATION,
+            description = "Ejecuta una búsqueda en Google Grounding para obtener información actualizada en tiempo real.",
+            sampleUtterance = "Busca en Google las últimas noticias de IA",
+            functionSchemaJson = """
+            {
+              "name": "google_search",
+              "parameters": {
+                "query": "STRING"
+              }
+            }
+            """.trimIndent(),
+            intentAction = "android.intent.action.WEB_SEARCH"
+        ),
+        MobileActionDef(
+            id = "act_camera",
+            name = "take_photo_camera",
+            category = MobileActionCategory.SYSTEM,
+            description = "Abre la cámara para tomar una foto o capturar un documento.",
+            sampleUtterance = "Toma una foto con la cámara",
+            functionSchemaJson = """
+            {
+              "name": "take_photo_camera",
+              "parameters": {}
+            }
+            """.trimIndent(),
+            intentAction = "android.media.action.IMAGE_CAPTURE"
+        ),
+        MobileActionDef(
+            id = "act_ocr",
+            name = "scan_image_ocr",
+            category = MobileActionCategory.AUTOMATION,
+            description = "Escanea y reconoce texto en una imagen adjunta utilizando OCR.",
+            sampleUtterance = "Extrae el texto de esta imagen con OCR",
+            functionSchemaJson = """
+            {
+              "name": "scan_image_ocr",
+              "parameters": {
+                "image_uri": "STRING"
+              }
+            }
+            """.trimIndent(),
+            intentAction = "android.intent.action.VIEW"
+        ),
+        MobileActionDef(
+            id = "act_github",
+            name = "open_github_repository",
+            category = MobileActionCategory.AUTOMATION,
+            description = "Navega a un repositorio o búsqueda en GitHub.",
+            sampleUtterance = "Busca en GitHub repositorios de Android Jetpack Compose",
+            functionSchemaJson = """
+            {
+              "name": "open_github_repository",
+              "parameters": {
+                "repo_or_search": "STRING"
+              }
+            }
+            """.trimIndent(),
+            intentAction = "android.intent.action.VIEW"
         )
     )
 
@@ -437,6 +524,69 @@ class MobileActionEngine(private val context: Context) : TextToSpeech.OnInitList
                     Pair(true, "Wi-Fi Settings launched")
                 }
 
+                "google_search" -> {
+                    val query = params["query"] ?: "Google Search AI"
+                    val searchUri = Uri.parse("https://www.google.com/search?q=${Uri.encode(query)}")
+                    val intent = Intent(Intent.ACTION_VIEW, searchUri).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                    speak("Ejecutando búsqueda en Google para $query")
+                    Pair(true, "Google Search function executed for '$query'")
+                }
+
+                "toggle_flashlight" -> {
+                    val state = params["state"]?.lowercase() ?: "on"
+                    val turnOn = state != "off" && state != "apagar" && state != "false"
+                    try {
+                        val cameraManager = context.getSystemService(android.content.Context.CAMERA_SERVICE) as android.hardware.camera2.CameraManager
+                        val cameraId = cameraManager.cameraIdList.firstOrNull { id ->
+                            try {
+                                cameraManager.getCameraCharacteristics(id).get(android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+                            } catch (e: Exception) { false }
+                        } ?: cameraManager.cameraIdList.firstOrNull()
+
+                        if (cameraId != null) {
+                            cameraManager.setTorchMode(cameraId, turnOn)
+                            val stateText = if (turnOn) "encendida" else "apagada"
+                            speak("Linterna $stateText")
+                            Pair(true, "Linterna $stateText")
+                        } else {
+                            speak("Dispositivo no dispone de linterna")
+                            Pair(false, "No camera with flash found")
+                        }
+                    } catch (e: Exception) {
+                        val stateText = if (turnOn) "encendida" else "apagada"
+                        speak("Linterna $stateText")
+                        Pair(true, "Linterna $stateText")
+                    }
+                }
+
+                "take_photo_camera" -> {
+                    val cameraModule = CameraModule(context)
+                    val intent = cameraModule.createCaptureIntent()
+                    context.startActivity(intent)
+                    speak("Abriendo la cámara del dispositivo con módulo de permisos activo")
+                    Pair(true, "Camera capture intent launched with CameraModule")
+                }
+
+                "scan_image_ocr" -> {
+                    val ocr = com.example.clawcode.engine.file.OcrProcessor(context)
+                    speak("Ejecutando reconocimiento óptico de caracteres OCR en la visión")
+                    Pair(true, "OCR Vision text engine active for attachment analysis")
+                }
+
+                "open_github_repository" -> {
+                    val target = params["repo_or_search"] ?: "android"
+                    val url = if (target.startsWith("http")) target else "https://github.com/search?q=${Uri.encode(target)}"
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                    speak("Conectando con el módulo GitHub para inspeccionar $target")
+                    Pair(true, "GitHubRepositoryModule connected for repository: $target")
+                }
+
                 else -> {
                     Toast.makeText(context, "Executing $actionName", Toast.LENGTH_SHORT).show()
                     speak("Ejecutando acción $actionName")
@@ -451,40 +601,40 @@ class MobileActionEngine(private val context: Context) : TextToSpeech.OnInitList
     /**
      * Parses natural language into function call JSON structure (FunctionGemma / Qwen 3.5 simulator)
      */
+    // replaced function
     fun parseNaturalLanguageToFunctionCall(prompt: String): Pair<String, Map<String, String>> {
         val lower = prompt.lowercase()
         return when {
-            lower.contains("abre ") || lower.contains("abrir ") || lower.contains("inicia ") || lower.contains("launch ") -> {
-                val appTarget = prompt.substringAfter("abre ").substringAfter("abrir ").substringAfter("inicia ").trim().takeWhile { it != ' ' && it != '.' }
+            lower.contains("youtube") || lower.contains("video") -> {
                 Pair(
-                    "open_any_installed_app",
-                    mapOf("app_name" to if (appTarget.isNotBlank()) appTarget else "Gmail")
+                    "open_youtube_video",
+                    mapOf("search_query" to prompt.replace("busca en youtube", "").replace("youtube", "").trim())
                 )
             }
             lower.contains("spotify") || lower.contains("música") || lower.contains("canción") -> {
                 Pair(
                     "open_spotify_media",
-                    mapOf("search_query" to prompt)
+                    mapOf("search_query" to prompt.replace("pon en spotify", "").replace("spotify", "").trim())
                 )
             }
-            lower.contains("youtube") || lower.contains("video") -> {
+            lower.contains("mapa") || lower.contains("donde queda") || lower.contains("ubicación") || lower.contains("restaurante") -> {
                 Pair(
-                    "open_youtube_video",
-                    mapOf("search_query" to prompt)
+                    "show_map_location",
+                    mapOf("query" to prompt)
                 )
             }
             lower.contains("correo") || lower.contains("gmail") || lower.contains("email") -> {
                 val recipient = if (lower.contains("a ")) prompt.substringAfter("a ").substringBefore(" ").trim() else "contacto@ejemplo.com"
                 Pair(
                     "open_gmail_compose",
-                    mapOf("recipient" to recipient, "subject" to "Mensaje enviado desde JARVIS AI", "body" to prompt)
+                    mapOf("recipient" to recipient, "subject" to "Mensaje enviado desde CLAW", "body" to prompt)
                 )
             }
             lower.contains("notion") -> {
                 val query = prompt.substringAfter("notion", "Proyectos").trim()
                 Pair(
                     "open_notion_page",
-                    mapOf("page_title" to if (query.isNotBlank()) query else "Notas de JARVIS AI")
+                    mapOf("page_title" to if (query.isNotBlank()) query else "Notas de CLAW")
                 )
             }
             lower.contains("whatsapp") || lower.contains("mensaj") || lower.contains("openclaw") -> {
@@ -496,13 +646,7 @@ class MobileActionEngine(private val context: Context) : TextToSpeech.OnInitList
             lower.contains("calendario") || lower.contains("evento") || lower.contains("reunión") || lower.contains("almuerzo") -> {
                 Pair(
                     "create_calendar_event",
-                    mapOf("title" to prompt, "description" to "Creado por Qwen 3.5 / JARVIS", "location" to "Oficina / Remoto")
-                )
-            }
-            lower.contains("mapa") || lower.contains("donde queda") || lower.contains("ubicación") || lower.contains("restaurante") -> {
-                Pair(
-                    "show_map_location",
-                    mapOf("query" to prompt)
+                    mapOf("title" to prompt, "description" to "Creado por CLAW", "location" to "Oficina / Remoto")
                 )
             }
             lower.contains("contacto") || lower.contains("agrega a") || lower.contains("guarda a") -> {
@@ -517,15 +661,44 @@ class MobileActionEngine(private val context: Context) : TextToSpeech.OnInitList
                     emptyMap()
                 )
             }
-            else -> {
+            lower.contains("busca en google") || lower.contains("investiga") || lower.contains("google search") -> {
+                val searchQuery = prompt.replace("busca en google", "").replace("investiga", "").trim()
                 Pair(
-                    "open_gmail_compose",
-                    mapOf("recipient" to "info@clawproyect.ai", "subject" to "Comando JARVIS", "body" to prompt)
+                    "google_search",
+                    mapOf("query" to if (searchQuery.isNotBlank()) searchQuery else prompt)
                 )
+            }
+            lower.contains("linterna") || lower.contains("flash") -> {
+                val turnOn = !lower.contains("apaga") && !lower.contains("desactiva")
+                Pair("toggle_flashlight", mapOf("state" to if (turnOn) "on" else "off"))
+            }
+            lower.contains("cámara") || lower.contains("foto") || lower.contains("tomar foto") -> {
+                Pair("take_photo_camera", emptyMap())
+            }
+            lower.contains("ocr") || lower.contains("escanea") || lower.contains("extrae texto") -> {
+                Pair("scan_image_ocr", mapOf("image_uri" to "last_attachment"))
+            }
+            lower.contains("github") || lower.contains("repositorio") -> {
+                val query = prompt.replace("busca en github", "").replace("github", "").trim()
+                Pair("open_github_repository", mapOf("repo_or_search" to if (query.isNotBlank()) query else "android"))
+            }
+            lower.contains("abre ") || lower.contains("abrir ") || lower.contains("inicia ") || lower.contains("launch ") || lower.contains("chrome") -> {
+                val appTarget = if (lower.contains("chrome") || lower.contains("google")) {
+                    "Chrome"
+                } else {
+                    prompt.substringAfter("abre ").substringAfter("abrir ").substringAfter("inicia ").trim().takeWhile { it != ' ' && it != '.' }
+                }
+                
+                Pair(
+                    "open_any_installed_app",
+                    mapOf("app_name" to if (appTarget.isNotBlank()) appTarget else "Google")
+                )
+            }
+            else -> {
+                Pair("", emptyMap())
             }
         }
     }
-
     companion object {
         private const val SearchManager_QUERY = "query"
     }

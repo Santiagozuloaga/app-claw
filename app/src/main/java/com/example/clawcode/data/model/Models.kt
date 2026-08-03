@@ -68,6 +68,42 @@ data class InstalledApp(
     val isSystemApp: Boolean = false
 )
 
+enum class ModelTaskMode(val displayName: String) {
+    CODING_TERMINAL("Desarrollo y Terminal"),
+    REASONING_CHAT("Razonamiento y Chat"),
+    MULTIMEDIA_VISION("Análisis Visión"),
+    AUTOMATION_MOBILE("Acciones y OS"),
+    IDLE_STANDBY("Modo Reposo")
+}
+
+enum class AgentPersonality(val displayName: String, val tag: String) {
+    JARVIS_ANALYST("JARVIS Analista", "Equilibrado, Cian y Púrpura"),
+    CYBERPUNK_HACKER("Cyberpunk Hacker", "Verde Matrix Terminal"),
+    ZEN_COUNSELOR("Consejero Zen", "Lila y Azul Mente Calma"),
+    TURBO_OPTIMIZER("Optimizador Turbo", "Ámbar Fuego y Carmesí")
+}
+
+enum class CustomThemeColorPreset(
+    val displayName: String,
+    val hexColor: String,
+    val description: String
+) {
+    CYAN("Cian Eléctrico", "#00F0FF", "Derivados suaves (Cian Mente) y fuertes (Cobalto Profundo)"),
+    EMERALD("Esmeralda Matrix", "#00FF66", "Derivados suaves (Menta Liger) y fuertes (Bosque Oscuro)"),
+    PURPLE("Púrpura Neón", "#9D4EDD", "Derivados suaves (Lila Lavanda) y fuertes (Violeta Noche)"),
+    AMBER("Ámbar Fuego", "#FF9100", "Derivados suaves (Crema Dorado) y fuertes (Naranja Escarlata)"),
+    CRIMSON("Rojo Carmesí", "#FF1744", "Derivados suaves (Coral Rosado) y fuertes (Borgoña Intenso)"),
+    PINK("Rosa Neón", "#FF2A6D", "Derivados suaves (Fucsia Pastel) y fuertes (Magenta Oscuro)"),
+    ROYAL_BLUE("Azul Real", "#0088FF", "Derivados suaves (Celeste Agua) y fuertes (Azul Marino)"),
+    GOLD("Dorado Neón", "#FFD700", "Derivados suaves (Amarillo Sol) y fuertes (Ámbar Oscuro)")
+}
+
+enum class ThermalState(val displayName: String) {
+    COOL("Temperatura Óptima (< 35°C)"),
+    WARM("Dispositivo Tibio (35 - 41.9°C)"),
+    HOT_THROTTLE("Alerta Térmica (>= 42°C)")
+}
+
 data class JarvisModfile(
     val id: String = "modfile-1",
     val agentName: String = "JARVIS_Claw_Standard",
@@ -82,7 +118,24 @@ data class JarvisModfile(
     val stopTokens: List<String> = listOf("<|im_end|>", "</s>", "[END]"),
     val enableVoiceTTS: Boolean = true,
     val enableWakeWord: Boolean = true,
-    val wakeWord: String = "Jarvis"
+    val wakeWord: String = "Jarvis",
+    val voiceStyle: String = "Voz 1",
+    val pitchMultiplier: Float = 1.0f,
+    val speechRateMultiplier: Float = 1.0f,
+    val personality: AgentPersonality = AgentPersonality.JARVIS_ANALYST,
+    val currentTaskMode: ModelTaskMode = ModelTaskMode.IDLE_STANDBY,
+    val useAutoDynamicTheme: Boolean = true,
+    val customThemeColorPreset: CustomThemeColorPreset = CustomThemeColorPreset.CYAN,
+    val isDarkMode: Boolean = true,
+    val selectedAvatarId: Int = 1
+)
+
+data class TaskPerformanceMetrics(
+    val timeLabel: String,
+    val successRatePct: Float, // 0 to 100
+    val avgDurationSeconds: Float,
+    val totalCompleted: Int,
+    val totalFailed: Int
 )
 
 data class FileAttachmentItem(
@@ -137,6 +190,21 @@ data class HardwareTelemetry(
     val totalContextTokens: Int = 16384
 )
 
+data class SearchGroundingSource(
+    val title: String,
+    val url: String,
+    val snippet: String
+)
+
+data class SearchGroundingResult(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val query: String,
+    val summaryText: String,
+    val sources: List<SearchGroundingSource>,
+    val timestamp: String,
+    val isGroundingActive: Boolean = true
+)
+
 data class OllamaConfig(
     val hostUrl: String = "http://10.0.2.2:11434",
     val modelName: String = "qwen3.5:custom-claw",
@@ -144,3 +212,4 @@ data class OllamaConfig(
     val useOnDeviceLiteRTFallback: Boolean = true,
     val isConnected: Boolean = true
 )
+

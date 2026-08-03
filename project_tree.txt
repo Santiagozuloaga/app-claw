@@ -1,0 +1,89 @@
+| | | | | | |____
+| | | | | | |____data
+| | | | | | | |____model
+| | | | | | | | |____Models.kt
+| | | | | | |____service
+| | | | | | | |____ClawLiveBackgroundService.kt
+| | | | | | |____ui
+| | | | | | | |____screens
+| | | | | | | | |____PermissionsScreen.kt
+| | | | | | | | |____DashboardScreen.kt
+| | | | | | | | |____JarvisAgentDesignerScreen.kt
+| | | | | | | | |____ToolsScreen.kt
+| | | | | | | | |____AvatarSelectionScreen.kt
+| | | | | | | | |____ModelManagerScreen.kt
+| | | | | | | | |____TerminalScreen.kt
+| | | | | | | | |____TasksScreen.kt
+| | | | | | | | |____MemoryScreen.kt
+| | | | | | | | |____DiskSpaceManagerScreen.kt
+| | | | | | | | |____ConfigModfileScreen.kt
+| | | | | | | | |____SystemPerformanceReportScreen.kt
+| | | | | | | | |____JarvisChatScreen.kt
+| | | | | | | | |____ClawLiveScreen.kt
+| | | | | | | | |____OpenClawOllamaScreen.kt
+| | | | | | | | |____DiagnosticConsole.kt
+| | | | | | | | |____UnifiedConsoleScreen.kt
+| | | | | | | | |____MobileActionsScreen.kt
+| | | | | | | |____theme
+| | | | | | | | |____Type.kt
+| | | | | | | | |____Color.kt
+| | | | | | | | |____Theme.kt
+| | | | | | | |____components
+| | | | | | | | |____AgentExecutionProgressBar.kt
+| | | | | | | | |____DiagnosticConsole.kt
+| | | | | | | | |____CommonComponents.kt
+| | | | | | |____core
+| | | | | | | |____EventBus.kt
+| | | | | | | |____integrity
+| | | | | | | | |____Sha256Verifier.kt
+| | | | | | | |____manifest
+| | | | | | | | |____ManifestParser.kt
+| | | | | | | |____model
+| | | | | | | | |____QwenModelBridgeService.kt
+| | | | | | | | |____ModelDescriptor.kt
+| | | | | | | |____repository
+| | | | | | | | |____ModelRepository.kt
+| | | | | | | |____memory
+| | | | | | | | |____MemoryManager.kt
+| | | | | | | |____download
+| | | | | | | | |____ModelDownloadManager.kt
+| | | | | | | |____storage
+| | | | | | | | |____DiskSpaceManager.kt
+| | | | | | | | |____ModelStorage.kt
+| | | | | | | |____AppEvent.kt
+| | | | | | | |____telemetry
+| | | | | | | | |____SystemMonitor.kt
+| | | | | | | |____conversation
+| | | | | | | | |____ConversationManager.kt
+| | | | | | | |____config
+| | | | | | | | |____ModelRuntimeConfig.kt
+| | | | | | | |____personality
+| | | | | | | | |____PersonalityManager.kt
+| | | | | | |____engine
+| | | | | | | |____MobileActionEngine.kt
+| | | | | | | |____plugin
+| | | | | | | | |____PluginManager.kt
+| | | | | | | |____browser
+| | | | | | | | |____BrowserModule.kt
+| | | | | | | |____voice
+| | | | | | | | |____VoiceModule.kt
+| | | | | | | |____HardwareTelemetryUtils.kt
+| | | | | | | |____file
+| | | | | | | | |____OcrProcessor.kt
+| | | | | | | | |____FileParserEngine.kt
+| | | | | | | |____GitHubRepositoryModule.kt
+| | | | | | | |____CameraModule.kt
+| | | | | | | |____sage
+| | | | | | | | |____SageModule.kt
+| | | | | | | |____vision
+| | | | | | | | |____VisionModule.kt
+| | | | | | | |____ClawEngine.kt
+| | | | | | | |____automation
+| | | | | | | | |____AutomationEngine.kt
+| | | | | | |____AppConnectorManager.kt
+| | | | | | |____widget
+| | | | | | | |____ClawAppWidgetProvider.kt
+| | | | | | |____viewmodel
+| | | | | | | |____ClawViewModel.kt
+| | | | | | |____ClawApplication.kt
+| | | | | | |____MainActivity.kt

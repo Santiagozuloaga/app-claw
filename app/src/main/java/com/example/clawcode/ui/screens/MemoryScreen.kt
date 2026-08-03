@@ -9,14 +9,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Compress
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.clawcode.data.model.MemoryItem
 import com.example.clawcode.ui.components.MemoryItemCard
 import com.example.clawcode.ui.theme.*
@@ -28,6 +31,7 @@ fun MemoryScreen(
     onCompactMemory: () -> Unit,
     onAddMemory: (String, String, String) -> Unit
 ) {
+    val palette = LocalDynamicThemePalette.current
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var showAddDialog by remember { mutableStateOf(false) }
 
@@ -35,20 +39,20 @@ fun MemoryScreen(
         if (selectedCategory == null) memories else memories.filter { it.category.equals(selectedCategory, ignoreCase = true) }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().background(palette.background)) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Header Card with Compaction Action
-            Card(
+            // Header Card
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .border(1.dp, NeonAmber.copy(alpha = 0.4f), RoundedCornerShape(16.dp)),
-                colors = CardDefaults.cardColors(containerColor = DarkSurface)
+                    .border(1.dp, palette.border, RoundedCornerShape(16.dp)),
+                color = palette.surface,
+                shape = RoundedCornerShape(16.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
@@ -57,40 +61,47 @@ fun MemoryScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text(
-                                text = "Claw Memory Vault",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextPrimary
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Memory, contentDescription = null, tint = palette.primary, modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "BÓVEDA DE MEMORIA",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextPrimary,
+                                        letterSpacing = 1.sp
+                                    )
                                 )
-                            )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "${memories.sumOf { it.tokenCount }} total context tokens",
+                                text = "${memories.sumOf { it.tokenCount }} tokens de contexto total",
                                 style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                             )
                         }
-
                         IconButton(
                             onClick = { showAddDialog = true },
                             modifier = Modifier
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(NeonTeal)
+                                .background(palette.primary.copy(alpha = 0.15f))
+                                .border(1.dp, palette.primary, RoundedCornerShape(10.dp))
                                 .size(36.dp)
                                 .testTag("btn_add_memory")
                         ) {
-                            Icon(imageVector = Icons.Default.Add, contentDescription = "Add Memory", tint = DarkBackground)
+                            Icon(imageVector = Icons.Default.Add, contentDescription = "Añadir Memoria", tint = palette.primary)
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     Button(
                         onClick = onCompactMemory,
                         enabled = !isCompacting,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = NeonAmber,
-                            contentColor = DarkBackground
+                            containerColor = palette.secondary.copy(alpha = 0.2f),
+                            contentColor = palette.secondary
                         ),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, palette.secondary),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -99,15 +110,15 @@ fun MemoryScreen(
                         if (isCompacting) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(18.dp),
-                                color = DarkBackground,
+                                color = palette.secondary,
                                 strokeWidth = 2.dp
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Compacting Context Tokens...", fontWeight = FontWeight.Bold)
+                            Text("Compactando tokens...", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         } else {
                             Icon(imageVector = Icons.Default.Compress, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Run Memory Compaction Shim", fontWeight = FontWeight.Bold)
+                            Text("Compactar Memoria", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
                 }
@@ -121,30 +132,57 @@ fun MemoryScreen(
                 FilterChip(
                     selected = selectedCategory == null,
                     onClick = { selectedCategory = null },
-                    label = { Text("All (${memories.size})") }
+                    label = { Text("Todo (${memories.size})", fontSize = 12.sp) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = palette.primary.copy(alpha = 0.2f),
+                        selectedLabelColor = palette.primary
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = true,
+                        selected = selectedCategory == null,
+                        borderColor = palette.border,
+                        selectedBorderColor = palette.primary
+                    )
                 )
                 listOf("Core", "Context", "Skill", "Session").forEach { cat ->
                     FilterChip(
                         selected = selectedCategory == cat,
                         onClick = { selectedCategory = cat },
-                        label = { Text(cat) }
+                        label = { Text(cat, fontSize = 12.sp) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = palette.primary.copy(alpha = 0.2f),
+                            selectedLabelColor = palette.primary
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = selectedCategory == cat,
+                            borderColor = palette.border,
+                            selectedBorderColor = palette.primary
+                        )
                     )
                 }
             }
 
             // Memory List
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(filteredMemories) { item ->
-                    MemoryItemCard(item = item)
+            if (filteredMemories.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Bóveda vacía para esta categoría.", color = TextMuted, fontSize = 14.sp)
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(filteredMemories) { item ->
+                        MemoryItemCard(item = item)
+                    }
                 }
             }
         }
 
         if (showAddDialog) {
             AddMemoryDialog(
+                palette = palette,
                 onDismiss = { showAddDialog = false },
                 onConfirm = { key, category, value ->
                     onAddMemory(key, category, value)
@@ -157,6 +195,7 @@ fun MemoryScreen(
 
 @Composable
 fun AddMemoryDialog(
+    palette: DynamicThemePalette,
     onDismiss: () -> Unit,
     onConfirm: (String, String, String) -> Unit
 ) {
@@ -166,12 +205,13 @@ fun AddMemoryDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = DarkSurface,
+        containerColor = palette.surface,
         title = {
             Text(
-                text = "Add Context Memory Key",
+                text = "Nueva Llave de Contexto",
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = TextPrimary,
+                fontSize = 16.sp
             )
         },
         text = {
@@ -179,24 +219,35 @@ fun AddMemoryDialog(
                 OutlinedTextField(
                     value = key,
                     onValueChange = { key = it },
-                    label = { Text("Key Identifier") },
+                    label = { Text("Identificador de Llave", fontSize = 12.sp) },
                     modifier = Modifier.fillMaxWidth().testTag("input_mem_key"),
-                    singleLine = true
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = palette.primary,
+                        unfocusedBorderColor = palette.border
+                    )
                 )
-
                 OutlinedTextField(
                     value = category,
                     onValueChange = { category = it },
-                    label = { Text("Category (Core, Context, Skill, Session)") },
+                    label = { Text("Categoría", fontSize = 12.sp) },
                     modifier = Modifier.fillMaxWidth().testTag("input_mem_cat"),
-                    singleLine = true
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = palette.primary,
+                        unfocusedBorderColor = palette.border
+                    )
                 )
-
                 OutlinedTextField(
                     value = value,
                     onValueChange = { value = it },
-                    label = { Text("Memory Content / Value") },
-                    modifier = Modifier.fillMaxWidth().testTag("input_mem_val")
+                    label = { Text("Valor", fontSize = 12.sp) },
+                    modifier = Modifier.fillMaxWidth().testTag("input_mem_val"),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = palette.primary,
+                        unfocusedBorderColor = palette.border
+                    ),
+                    maxLines = 4
                 )
             }
         },
@@ -207,15 +258,15 @@ fun AddMemoryDialog(
                         onConfirm(key, category, value)
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = NeonTeal),
+                colors = ButtonDefaults.buttonColors(containerColor = palette.primary),
                 modifier = Modifier.testTag("btn_save_memory")
             ) {
-                Text("Save Key", color = DarkBackground, fontWeight = FontWeight.Bold)
+                Text("Guardar", color = Color.Black, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", color = TextMuted)
+                Text("Cancelar", color = TextMuted)
             }
         }
     )

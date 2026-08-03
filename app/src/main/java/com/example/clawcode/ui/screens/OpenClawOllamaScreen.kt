@@ -1,6 +1,7 @@
 package com.example.clawcode.ui.screens
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -127,6 +128,46 @@ fun OpenClawOllamaScreen(viewModel: ClawViewModel) {
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Experimental PC Server setup
+                Surface(
+                    color = NeonAmber.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, NeonAmber.copy(alpha = 0.4f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Science, contentDescription = null, tint = NeonAmber, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Experimental: Conectar PC Local (Host) como Servidor",
+                                color = NeonAmber,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Si estás ejecutando Ollama en tu PC mientras usas el emulador de Android, usa la IP del host y el puerto oficial de Ollama.",
+                            color = TextSecondary,
+                            fontSize = 11.sp,
+                            lineHeight = 14.sp
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = { hostUrl = "http://10.0.2.2:11434" },
+                            colors = ButtonDefaults.buttonColors(containerColor = NeonAmber.copy(alpha = 0.2f)),
+                            border = BorderStroke(1.dp, NeonAmber),
+                            shape = RoundedCornerShape(6.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Usar Puerto Ollama PC (10.0.2.2:11434)", color = NeonAmber, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(10.dp))
 

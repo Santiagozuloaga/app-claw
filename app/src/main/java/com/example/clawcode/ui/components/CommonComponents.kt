@@ -253,12 +253,13 @@ fun TaskItemCard(
 
 @Composable
 fun MemoryItemCard(item: MemoryItem) {
+    val palette = LocalDynamicThemePalette.current
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .border(1.dp, DarkBorder, RoundedCornerShape(12.dp)),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface)
+            .border(1.dp, palette.border, RoundedCornerShape(12.dp)),
+        colors = CardDefaults.cardColors(containerColor = palette.surface)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
@@ -271,19 +272,20 @@ fun MemoryItemCard(item: MemoryItem) {
                     style = MaterialTheme.typography.titleSmall.copy(
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
-                        color = NeonEmerald
+                        color = palette.primary
                     )
                 )
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(4.dp))
-                        .background(DarkSurfaceVariant)
+                        .background(palette.secondary.copy(alpha = 0.15f))
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
                         text = item.category.uppercase(),
                         fontSize = 10.sp,
-                        color = TextSecondary
+                        color = palette.secondary,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -319,7 +321,8 @@ fun MemoryItemCard(item: MemoryItem) {
 @Composable
 fun ToolItemCard(
     tool: McpTool,
-    onToggle: (String) -> Unit
+    onToggle: (String) -> Unit,
+    onVerify: ((McpTool) -> Unit)? = null
 ) {
     val borderAnim by animateColorAsState(
         if (tool.isEnabled) NeonTeal.copy(alpha = 0.6f) else DarkBorder,
@@ -362,6 +365,32 @@ fun ToolItemCard(
                             color = NeonTeal
                         )
                     }
+                    if (tool.isEnabled) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(NeonEmerald.copy(alpha = 0.2f))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                .border(1.dp, NeonEmerald.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(androidx.compose.foundation.shape.CircleShape)
+                                        .background(NeonEmerald)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "CONECTADO / ONLINE",
+                                    fontSize = 9.sp,
+                                    color = NeonEmerald,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -376,6 +405,17 @@ fun ToolItemCard(
                         color = TextMuted
                     )
                 )
+                
+                if (tool.isEnabled && onVerify != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(
+                        onClick = { onVerify(tool) },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                        modifier = Modifier.height(28.dp).border(1.dp, NeonEmerald.copy(alpha=0.5f), RoundedCornerShape(4.dp))
+                    ) {
+                        Text("VERIFICAR CONEXIÓN", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = NeonEmerald)
+                    }
+                }
             }
 
             Switch(

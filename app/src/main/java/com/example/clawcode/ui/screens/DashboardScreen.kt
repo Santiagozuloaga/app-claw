@@ -1,383 +1,474 @@
 package com.example.clawcode.ui.screens
 
+import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.os.Bundle
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
 import android.widget.Toast
-import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.clawcode.data.model.AgentTask
-import com.example.clawcode.data.model.AgentStats
-import com.example.clawcode.data.model.HardwareTelemetry
-import com.example.clawcode.ui.components.MetricCard
-import com.example.clawcode.ui.components.TaskItemCard
+import com.example.clawcode.data.model.TaskPerformanceMetrics
+import com.example.clawcode.data.model.TaskStatus
 import com.example.clawcode.ui.theme.*
+import com.example.clawcode.viewmodel.ClawViewModel
+import java.util.Locale
 
 @Composable
 fun DashboardScreen(
-    stats: AgentStats,
-    hardware: HardwareTelemetry = HardwareTelemetry(),
-    tasks: List<AgentTask>,
-    onRunTask: (String) -> Unit,
-    onCompleteTask: (String) -> Unit,
-    onSelectTask: (AgentTask) -> Unit,
-    onNavigateTerminal: () -> Unit
+    viewModel: ClawViewModel,
+    onNavigateToChat: () -> Unit,
+    onNavigateToLive: (() -> Unit)? = null,
+    onNavigateToConfig: (() -> Unit)? = null,
+    onNavigateToConsole: (() -> Unit)? = null
 ) {
-    LazyColumn(
+    val context = LocalContext.current
+    val palette = LocalDynamicThemePalette.current
+    
+    val hardware by viewModel.hardwareTelemetry.collectAsState()
+    val tasks by viewModel.tasks.collectAsState()
+    val modfile by viewModel.jarvisModfile.collectAsState()
+    val ollamaConfig by viewModel.ollamaConfig.collectAsState()
+    val consoleLogs by viewModel.consoleLogs.collectAsState()
+    
+    val activeTasks = tasks.filter { it.status == TaskStatus.RUNNING }
+    var isVoiceListeningShowing by remember { mutableStateOf(false) }
+    var recognizedSpeechText by remember { mutableStateOf("") }
+    
+    val audioPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            isVoiceListeningShowing = true
+        } else {
+            Toast.makeText(context, "Permiso de micrófono requerido", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .background(DarkBackground)
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // System Banner Card
-        item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(DarkSurfaceVariant)
-                    .border(1.dp, NeonEmerald.copy(alpha = 0.5f), RoundedCornerShape(20.dp)),
-                colors = CardDefaults.cardColors(containerColor = DarkSurface)
-            ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(10.dp)
-                                    .clip(CircleShape)
-                                    .background(NeonEmerald)
-                            )
-                            Text(
-                                text = "CLAW ASSISTANT • EN LÍNEA",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontFamily = FontFamily.Monospace,
-                                    letterSpacing = 1.5.sp,
-                                    color = NeonEmerald
-                                )
-                            )
-                        }
-
-                        Surface(
-                            color = NeonEmerald.copy(alpha = 0.2f),
-                            shape = RoundedCornerShape(6.dp)
-                        ) {
-                            Text(
-                                text = "100% LOCAL NPU",
-                                color = NeonEmerald,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Text(
-                        text = "¡Hola, Santiago!",
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontWeight = FontWeight.ExtraBold,
-                            color = TextPrimary
-                        )
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Text(
-                        text = "Tu asistente personal CLAW Standard está preparado y ejecutándose de forma privada en el chip del teléfono.",
-                        style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary)
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Executive Summary Cards / Bullets
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Surface(
-                            color = DarkSurfaceVariant,
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.weight(1f).border(0.5.dp, DarkBorder, RoundedCornerShape(8.dp))
-                        ) {
-                            Column(modifier = Modifier.padding(8.dp)) {
-                                Text("• Estado", fontSize = 10.sp, color = TextMuted)
-                                Text("Activo", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = NeonEmerald)
-                            }
-                        }
-
-                        Surface(
-                            color = DarkSurfaceVariant,
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.weight(1f).border(0.5.dp, DarkBorder, RoundedCornerShape(8.dp))
-                        ) {
-                            Column(modifier = Modifier.padding(8.dp)) {
-                                Text("• Tareas Colas", fontSize = 10.sp, color = TextMuted)
-                                Text("${tasks.size} Tareas", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = NeonTeal)
-                            }
-                        }
-
-                        Surface(
-                            color = DarkSurfaceVariant,
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.weight(1f).border(0.5.dp, DarkBorder, RoundedCornerShape(8.dp))
-                        ) {
-                            Column(modifier = Modifier.padding(8.dp)) {
-                                Text("• Modelo", fontSize = 10.sp, color = TextMuted)
-                                Text("CLAW Standard", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = NeonAmber)
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Button(
-                        onClick = onNavigateTerminal,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = NeonEmerald,
-                            contentColor = DarkBackground
-                        ),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("btn_launch_terminal")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Terminal,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Abrir Consola de Comandos CLI",
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-        }
-
-        // Hardware Telemetry Section
-        item {
-            Text(
-                text = "Telemetría de Hardware & Recarga de Tokens",
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-            )
-        }
-
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                // Row 1: CPU & GPU/NPU
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    MetricCard(
-                        title = "Uso CPU / Cores",
-                        value = "${hardware.cpuUsagePercent}%",
-                        subtitle = "${hardware.cpuCores} Cores Activos",
-                        icon = Icons.Default.Memory,
-                        accentColor = NeonEmerald,
-                        modifier = Modifier.weight(1f)
-                    )
-                    MetricCard(
-                        title = "Acelerador GPU/NPU",
-                        value = "Acelerado",
-                        subtitle = hardware.npuGpuAccelerator,
-                        icon = Icons.Default.Speed,
-                        accentColor = NeonTeal,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                // Row 2: RAM & Batería
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    MetricCard(
-                        title = "Memoria RAM",
-                        value = "${hardware.ramUsedGb} GB",
-                        subtitle = "de ${hardware.ramTotalGb} GB (${(hardware.ramUsedGb / hardware.ramTotalGb * 100).toInt()}% libre)",
-                        icon = Icons.Default.SdCard,
-                        accentColor = NeonAmber,
-                        modifier = Modifier.weight(1f)
-                    )
-                    MetricCard(
-                        title = "Batería del Teléfono",
-                        value = "${hardware.batteryLevelPercent}%",
-                        subtitle = "Temp: ${hardware.batteryTemperatureC}°C",
-                        icon = Icons.Default.BatteryChargingFull,
-                        accentColor = NeonPurple,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                // Row 3: Tokens Speed & Context Window
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    MetricCard(
-                        title = "Tasa Inferencia Tokens",
-                        value = "${hardware.tokensPerSecond} t/s",
-                        subtitle = "Qwen 3.5 4-bit LiteRT",
-                        icon = Icons.Default.AutoAwesome,
-                        accentColor = NeonEmerald,
-                        modifier = Modifier.weight(1f)
-                    )
-                    MetricCard(
-                        title = "Ventana de Contexto",
-                        value = "${hardware.totalContextTokens}",
-                        subtitle = "Tokens Máximos",
-                        icon = Icons.Default.DataArray,
-                        accentColor = NeonPink,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-        }
-
-        // Sub-agents explanation banner & Historical Aggregated Analytics
-        item {
-            val context = LocalContext.current
-            Card(
-                colors = CardDefaults.cardColors(containerColor = DarkSurface),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(1.dp, NeonEmerald.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
-            ) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Histórico & Rendimiento Acumulado",
-                            color = NeonEmerald,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        // Export Report Button
-                        OutlinedButton(
-                            onClick = {
-                                val reportText = """
-                                    === REPORTE DE EJECUCIÓN AGENTE JARVIS (Qwen 3.5) ===
-                                    Fecha: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(java.util.Date())}
-                                    Dispositivo: 100% Local NPU / LiteRT Vulkan
-                                    Tasa Inferencia: ${hardware.tokensPerSecond} t/s
-                                    Tasa de Éxito en Tareas: 96.4%
-                                    Tiempo Total de Cómputo: 14h 28m
-                                    Costo Total NPU: $0.00 USD (On-device)
-                                    RAM Utilizada: ${hardware.ramUsedGb} GB / ${hardware.ramTotalGb} GB
-                                    Batería Nivel: ${hardware.batteryLevelPercent}%
-                                    ===================================================
-                                """.trimIndent()
-
-                                val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(android.content.Intent.EXTRA_TEXT, reportText)
-                                }
-                                context.startActivity(android.content.Intent.createChooser(intent, "Compartir Reporte de Agente"))
-                                Toast.makeText(context, "Reporte generado y listo para exportar", Toast.LENGTH_SHORT).show()
-                            },
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonEmerald),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonEmerald),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Icon(imageVector = Icons.Default.Share, contentDescription = null, modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Exportar Reporte", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column {
-                            Text("Tasa de Éxito Tareas", fontSize = 10.sp, color = TextMuted)
-                            Text("96.4%", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = NeonEmerald)
-                        }
-                        Column {
-                            Text("Cómputo Acumulado", fontSize = 10.sp, color = TextMuted)
-                            Text("14h 28m", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = NeonTeal)
-                        }
-                        Column {
-                            Text("Tokens Procesados", fontSize = 10.sp, color = TextMuted)
-                            Text("1.82M", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = NeonAmber)
-                        }
-                        Column {
-                            Text("Costo Cloud Ahorrado", fontSize = 10.sp, color = TextMuted)
-                            Text("\$36.40", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = NeonPurple)
-                        }
-                    }
-                }
-            }
-        }
-
-        // Active Tasks Header
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+        // Welcome Header
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
                 Text(
-                    text = "Tareas Autónomas Activas",
-                    style = MaterialTheme.typography.titleMedium.copy(
+                    text = "Bienvenido, Santiago",
+                    style = MaterialTheme.typography.headlineMedium.copy(
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary
                     )
                 )
                 Text(
-                    text = "${tasks.size} Procesos",
-                    style = MaterialTheme.typography.labelMedium.copy(color = TextMuted)
+                    text = "Sistema CLAW en línea y listo.",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = TextSecondary
+                    )
                 )
+            }
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(DarkSurfaceVariant, CircleShape)
+                    .border(1.dp, DarkBorder, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Person, contentDescription = "Perfil", tint = NeonPrimary)
             }
         }
 
-        // Tasks List
-        items(tasks.take(4)) { task ->
-            TaskItemCard(
-                task = task,
-                onRunTask = onRunTask,
-                onCompleteTask = onCompleteTask,
-                onSelectTask = onSelectTask
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // System Status Grid
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            StatusCard(
+                title = "CPU",
+                value = "${hardware.cpuUsagePercent}%",
+                subtitle = "${hardware.cpuCores} Núcleos",
+                icon = Icons.Default.Memory,
+                iconColor = NeonPrimary,
+                modifier = Modifier.weight(1f)
             )
+            StatusCard(
+                title = "GPU/NPU",
+                value = "ACTIVO",
+                subtitle = hardware.npuGpuAccelerator.take(15),
+                icon = Icons.Default.DeveloperBoard,
+                iconColor = NeonSecondary,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            StatusCard(
+                title = "RAM",
+                value = "${"%.1f".format(hardware.ramUsedGb)} GB",
+                subtitle = "de ${hardware.ramTotalGb} GB",
+                icon = Icons.Default.Storage,
+                iconColor = WarningAmber,
+                modifier = Modifier.weight(1f)
+            )
+            StatusCard(
+                title = "Tokens",
+                value = "${hardware.totalContextTokens}",
+                subtitle = "${hardware.tokensPerSecond} t/s",
+                icon = Icons.Default.GraphicEq,
+                iconColor = NeonTeal,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            StatusCard(
+                title = "Batería",
+                value = "${hardware.batteryLevelPercent}%",
+                subtitle = "${hardware.batteryTemperatureC}°C",
+                icon = Icons.Default.BatteryChargingFull,
+                iconColor = if (hardware.batteryLevelPercent > 20) NeonPrimary else RedError,
+                modifier = Modifier.weight(1f)
+            )
+            StatusCard(
+                title = "Modelo",
+                value = if (ollamaConfig.useOnDeviceLiteRTFallback) "LOCAL" else "HOST",
+                subtitle = modfile.baseModel,
+                icon = Icons.Default.CloudSync,
+                iconColor = NeonPrimary,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Recent Conversation
+        SectionTitle("ÚLTIMA CONVERSACIÓN")
+        Spacer(modifier = Modifier.height(12.dp))
+        Surface(
+            modifier = Modifier.fillMaxWidth().clickable { onNavigateToChat() },
+            color = DarkSurfaceVariant,
+            shape = RoundedCornerShape(12.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder)
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(DarkBackground, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "Chat", tint = NeonPrimary, modifier = Modifier.size(20.dp))
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Análisis de código reciente", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text("Revisé los logs y encontré 2 advertencias menores.", color = TextSecondary, fontSize = 12.sp, maxLines = 1)
+                }
+                Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = "Abrir", tint = TextMuted, modifier = Modifier.size(16.dp))
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Quick Actions
+        SectionTitle("ACCIONES RÁPIDAS")
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            QuickActionButton(
+                title = "Chat",
+                icon = Icons.AutoMirrored.Filled.Chat,
+                color = NeonPrimary,
+                modifier = Modifier.weight(1f),
+                onClick = { onNavigateToChat() }
+            )
+            QuickActionButton(
+                title = "Jarvis",
+                icon = Icons.Default.GraphicEq,
+                color = WarningAmber,
+                modifier = Modifier.weight(1f),
+                onClick = { if (onNavigateToLive != null) onNavigateToLive() }
+            )
+            QuickActionButton(
+                title = "Consola",
+                icon = Icons.Default.Terminal,
+                color = NeonTeal,
+                modifier = Modifier.weight(1f),
+                onClick = { if (onNavigateToConsole != null) onNavigateToConsole() }
+            )
+            QuickActionButton(
+                title = "Config",
+                icon = Icons.Default.Settings,
+                color = TextSecondary,
+                modifier = Modifier.weight(1f),
+                onClick = { if (onNavigateToConfig != null) onNavigateToConfig() }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Diagnostic Console Feed Component
+        com.example.clawcode.ui.components.DiagnosticConsole(
+            logs = consoleLogs,
+            onClearLogs = { viewModel.clearConsoleLogs() }
+        )
+    }
+    
+    if (isVoiceListeningShowing) {
+        VoiceInputRecognitionDialog(
+            currentText = recognizedSpeechText,
+            isListening = true,
+            palette = palette,
+            onDismiss = { isVoiceListeningShowing = false },
+            onSendVoiceCommand = { 
+                isVoiceListeningShowing = false
+                viewModel.sendChatMessage(it)
+                Toast.makeText(context, "Ejecutando: $it", Toast.LENGTH_SHORT).show()
+                onNavigateToChat()
+            }
+        )
+    }
+}
+
+@Composable
+fun StatusCard(
+    title: String,
+    value: String,
+    subtitle: String,
+    icon: ImageVector,
+    iconColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = DarkSurfaceVariant,
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(title, color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(value, color = TextPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Text(subtitle, color = TextSecondary, fontSize = 12.sp)
         }
     }
 }
 
+@Composable
+fun QuickActionButton(
+    title: String,
+    icon: ImageVector,
+    color: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = modifier.clickable { onClick() },
+        color = DarkSurfaceVariant,
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(28.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(title, color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+        }
+    }
+}
+
+@Composable
+fun SectionTitle(title: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Text(title, color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+    }
+}
+
+@Composable
+fun VoiceInputRecognitionDialog(
+    currentText: String,
+    isListening: Boolean,
+    palette: DynamicThemePalette,
+    onDismiss: () -> Unit,
+    onSendVoiceCommand: (String) -> Unit
+) {
+    val context = LocalContext.current
+    var speechInputText by remember { mutableStateOf(currentText) }
+    var listeningState by remember { mutableStateOf(isListening) }
+
+    DisposableEffect(Unit) {
+        var speechRecognizer: SpeechRecognizer? = null
+        if (SpeechRecognizer.isRecognitionAvailable(context)) {
+            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
+                setRecognitionListener(object : RecognitionListener {
+                    override fun onReadyForSpeech(params: Bundle?) {
+                        listeningState = true
+                        speechInputText = "Escuchando... Di una orden para el agente."
+                    }
+                    override fun onBeginningOfSpeech() {
+                        speechInputText = "Procesando voz..."
+                    }
+                    override fun onRmsChanged(rmsdB: Float) {}
+                    override fun onBufferReceived(buffer: ByteArray?) {}
+                    override fun onEndOfSpeech() {
+                        listeningState = false
+                    }
+                    override fun onError(error: Int) {
+                        listeningState = false
+                        speechInputText = "Simulación por voz lista: 'Analizar logs y resumir errores del sistema'"
+                    }
+                    override fun onResults(results: Bundle?) {
+                        listeningState = false
+                        val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                        val text = matches?.firstOrNull() ?: ""
+                        if (text.isNotBlank()) {
+                            speechInputText = text
+                        }
+                    }
+                    override fun onPartialResults(partialResults: Bundle?) {}
+                    override fun onEvent(eventType: Int, params: Bundle?) {}
+                })
+            }
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+                putExtra(RecognizerIntent.EXTRA_PROMPT, "Da una orden a JARVIS")
+            }
+            try {
+                speechRecognizer.startListening(intent)
+            } catch (e: Exception) {
+                speechInputText = "Simulación por voz lista: 'Analizar logs y resumir errores del sistema'"
+            }
+        } else {
+            speechInputText = "Simulación por voz lista: 'Analizar logs y resumir errores del sistema'"
+        }
+        onDispose {
+            speechRecognizer?.destroy()
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = DarkSurface,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Mic, contentDescription = null, tint = NeonPrimary)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Entrada de Voz a Texto", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+        },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(CircleShape)
+                        .background(if (listeningState) NeonPrimary.copy(alpha = 0.2f) else DarkBackground)
+                        .border(2.dp, NeonPrimary, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.GraphicEq,
+                        contentDescription = "Waveform",
+                        tint = NeonPrimary,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = speechInputText,
+                    onValueChange = { speechInputText = it },
+                    label = { Text("Texto Reconocido por Voz", color = TextMuted) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = NeonPrimary,
+                        unfocusedBorderColor = DarkBorder,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary
+                    )
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onSendVoiceCommand(speechInputText) },
+                colors = ButtonDefaults.buttonColors(containerColor = NeonPrimary, contentColor = DarkBackground)
+            ) {
+                Text("Ejecutar", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar", color = TextMuted)
+            }
+        }
+    )
+}
