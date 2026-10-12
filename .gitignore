@@ -13,3 +13,8 @@ out*/
 .gradle/
 build/
 local.properties
+
+# Bytecode y caches locales: no son código fuente.
+__pycache__/
+*.pyc
+.pytest_cache/
