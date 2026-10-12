@@ -348,7 +348,10 @@ fun ClawTopAppBar(
     val activeGrounding by viewModel.activeGrounding.collectAsStateWithLifecycle()
     val ollamaConfig by viewModel.ollamaConfig.collectAsStateWithLifecycle()
     
-    val systemState = if (ollamaConfig.useOnDeviceLiteRTFallback) "SAFE MODE (Local)" else "ONLINE"
+    // La bandera de procesamiento local es una preferencia sin runtime detrás: mostrarla como
+    // "SAFE MODE (Local)" vendía una ejecución en el dispositivo que no ocurre. El color ámbar se
+    // conserva: sigue señalando el estado que requiere atención.
+    val systemState = if (ollamaConfig.useOnDeviceLiteRTFallback) "PREFERENCIA LOCAL SIN RUNTIME" else "RUNTIME HTTP"
     val isSafeMode = ollamaConfig.useOnDeviceLiteRTFallback
 
     Column(modifier = Modifier.fillMaxWidth()) {

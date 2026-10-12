@@ -32,9 +32,19 @@ fun ModelManagerScreen(viewModel: ClawViewModel) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    // viewModel.ollamaConfig es un stateIn(WhileSubscribed): leer su .value sin coleccionarlo
+    // devuelve la foto del arranque, no la configuración vigente. Coleccionarlo mantiene el
+    // puente apuntando al runtime real aunque el host se haya descubierto o editado después.
+    val ollamaConfig by viewModel.ollamaConfig.collectAsState()
+
     // Create or access ModelRepository & Qwen Bridge Service from context
     val modelRepo = remember { ModelRepository(context) }
-    val qwenBridge = remember { com.example.clawcode.core.model.QwenModelBridgeService(context) }
+    val qwenBridge = remember {
+        com.example.clawcode.core.model.QwenModelBridgeService(
+            context = context,
+            configProvider = { ollamaConfig }
+        )
+    }
     val bridgeState by qwenBridge.bridgeState.collectAsState()
     val lastTestResult by qwenBridge.lastTestResult.collectAsState()
 
@@ -59,14 +69,14 @@ fun ModelManagerScreen(viewModel: ClawViewModel) {
         ) {
             Column {
                 Text(
-                    text = "GESTOR DE MODELOS ON-DEVICE",
+                    text = "GESTOR DE MODELOS DESCARGABLES (sin runtime en el dispositivo)",
                     color = TextPrimary,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
                 )
                 Text(
-                    text = "Google AI Edge Gallery (LiteRT) & Hugging Face (GGUF) On-Device",
+                    text = "Google AI Edge Gallery (LiteRT) & Hugging Face (GGUF): descarga; esta build no los ejecuta en el dispositivo",
                     color = TextMuted,
                     fontSize = 12.sp
                 )

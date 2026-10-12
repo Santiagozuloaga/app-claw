@@ -18,6 +18,7 @@ class AppConnectorManager(private val context: Context) {
     private val NOTION_TOKEN = "secret_tu_token_aqui"
     private val NOTION_DATABASE_ID = "tu_db_id_aqui"
     private val GITHUB_TOKEN = "ghp_tu_token_aqui"
+    private val AI_EDGE_KEY = "TU_API_KEY_OPCIONAL"
 
     /**
      * PANEL DE VERIFICACIÓN "APP POR APP"
@@ -29,20 +30,37 @@ class AppConnectorManager(private val context: Context) {
         // 1. WhatsApp Normal
         estados["WhatsApp"] = if (esAppInstalada("com.whatsapp")) "Verificada (Instalada)" else "No instalada"
 
-        // 2. Google Drive / Gmail
-        estados["Google Workspace"] = "Listo (Usa la cuenta activa del sistema)"
+        // 2. Google Workspace: se comprueba si hay servicios de Google en el dispositivo; el resto
+        //    depende de la cuenta activa y no se puede verificar desde aquí.
+        estados["Google Workspace"] = if (esAppInstalada("com.google.android.gms"))
+            "Servicios de Google presentes (la cuenta activa no se comprueba desde la app)"
+        else
+            "Sin Google Play Services en este dispositivo"
 
-        // 3. Notion
-        estados["Notion"] = if (NOTION_TOKEN.startsWith("secret_")) "Configurada" else "Falta Token"
+        // 3. Notion. Antes: `startsWith("secret_")` -> "Configurada". Como el valor de fábrica ES
+        //    "secret_tu_token_aqui", el panel decía "Configurada" precisamente cuando no hay token.
+        //    Ningún valor se muestra: sólo si está reemplazado.
+        estados["Notion"] = if (esCredencialReal(NOTION_TOKEN, "secret_tu_token")) "Token propio configurado" else "Falta Token (hay un placeholder sin reemplazar)"
 
-        // 4. GitHub
-        estados["GitHub"] = if (GITHUB_TOKEN.startsWith("ghp_")) "Configurada" else "Falta Token"
+        // 4. GitHub, con la misma corrección.
+        estados["GitHub"] = if (esCredencialReal(GITHUB_TOKEN, "ghp_tu_token")) "Token propio configurado" else "Falta Token (hay un placeholder sin reemplazar)"
 
-        // 5. Google AI Edge Gallery
-        estados["AI Edge (Gemini Nano)"] = "Disponible en el dispositivo"
+        // 5. Google AI Edge. Se sondea el paquete de AICore en vez de afirmarlo: si está, sigue sin
+        //    significar que esta build ejecute algo en él (ninguna ruta carga pesos en el proceso).
+        estados["AI Edge (Gemini Nano)"] = if (esAppInstalada("com.google.android.aicore"))
+            "AICore presente en el dispositivo (esta build no ejecuta inferencia en él)"
+        else
+            "No disponible: no se detecta el paquete de AICore"
 
         return estados
     }
+
+    /**
+     * Una credencial cuenta como configurada sólo si salió del placeholder. `prefijo` es el arranque
+     * del valor de fábrica; nunca se devuelve ni se registra el contenido del token.
+     */
+    private fun esCredencialReal(valor: String, prefijoPlaceholder: String): Boolean =
+        valor.isNotBlank() && !valor.startsWith(prefijoPlaceholder)
 
     private fun esAppInstalada(packageName: String): Boolean {
         return try {
@@ -70,18 +88,26 @@ class AppConnectorManager(private val context: Context) {
         context.startActivity(intent)
     }
 
-    // --- GOOGLE AI EDGE GALLERY (PROCESAMIENTO LOCAL EN EL CELULAR) ---
+    // --- CLIENTE Gemini API (RED), NO INFERENCIA EN EL DISPOSITIVO ---
+    // El comentario original decía "Se conecta directamente a AICore en el procesador del teléfono".
+    // No: `com.google.ai.client.generativeai` es el cliente de la API de Gemini por HTTPS, y
+    // "gemini-nano" no es un modelo que ese cliente admita. Además la clave era un placeholder, así
+    // que la llamada sólo podía fallar... después de haber sacado una petición a la red.
     suspend fun aiEdgeProcesarLocal(promptCorto: String): String {
+        if (!esCredencialReal(AI_EDGE_KEY, "TU_API_KEY")) {
+            return "[AI EDGE NO USADO] No hay credencial de Gemini API configurada y, aunque la " +
+                    "hubiera, este camino es una llamada de red: no ejecuta ningún modelo dentro del " +
+                    "teléfono. La inferencia local de CLAW pasa por el runtime HTTP configurado."
+        }
         return try {
-            // Se conecta directamente a AICore en el procesador del teléfono
             val model = GenerativeModel(
-                modelName = "gemini-nano",
-                apiKey = "TU_API_KEY_OPCIONAL" // En dispositivos compatibles la firma la gestiona el sistema
+                modelName = "gemini-pro",
+                apiKey = AI_EDGE_KEY
             )
             val response = model.generateContent(promptCorto)
-            response.text ?: "Sin respuesta del modelo local."
+            response.text ?: "La API de Gemini no devolvió texto (respuesta remota, no local)."
         } catch (e: Exception) {
-            "Error en AI Edge Local: ${e.localizedMessage}"
+            "Error en la llamada remota de Gemini: ${e.localizedMessage}"
         }
     }
 

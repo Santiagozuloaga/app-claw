@@ -1,0 +1,15 @@
+build/
+.gradle/
+local.properties
+*.iml
+.cxx/
+captures/
+
+libs/
+out*/
+*.log
+
+# Caches locales de Gradle: son binarios y de máquina, no pertenecen al historial.
+.gradle/
+build/
+local.properties

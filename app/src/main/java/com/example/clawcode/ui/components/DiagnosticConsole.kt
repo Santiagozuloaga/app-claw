@@ -53,12 +53,14 @@ fun DiagnosticConsole(
     // Simulation Mode coroutine stream
     LaunchedEffect(isSimulationModeActive) {
         if (isSimulationModeActive && onInjectSimulatedLog != null) {
+            // Su único fin es ejercitar el stream cuando el usuario activa el chip; por eso
+            // ningún texto afirma una medición del dispositivo ni una ruta de inferencia.
             val sampleEvents = listOf(
-                Pair("SIMULATED_QWEN_GGUF", "[SIMULATION] Inferencia de modelo local completada en 115ms (48 t/s). Ruta NPU verificada."),
-                Pair("SIMULATED_OCR_CAMERA", "[SIMULATION] Escaneo OCR procesado: 'Texto de documento de prueba analizado correctamente'."),
-                Pair("SIMULATED_MEMORY_CLEAN", "[SIMULATION] Caché de modelos compactada. 120MB de RAM liberados."),
-                Pair("SIMULATED_OPENCLAW_WEBHOOK", "[SIMULATION] Webhook OpenClaw activo: Transmisión de mensaje simulado recibida."),
-                Pair("SIMULATED_SYSTEM_MONITOR", "[SIMULATION] Telemetría de hardware estable: CPU 24%, Batería 36°C, RAM OK.")
+                Pair("SIMULATED_QWEN_GGUF", "[SIMULATION][NO MEDIDO] Turno sintético de prueba: no se ejecutó ninguna inferencia ni se verificó ninguna ruta NPU; los t/s sólo los informa la última inferencia real."),
+                Pair("SIMULATED_OCR_CAMERA", "[SIMULATION][NO MEDIDO] Evento sintético de OCR: no llegó ninguna imagen y no hay texto reconocido que informar."),
+                Pair("SIMULATED_MEMORY_CLEAN", "[SIMULATION][NO MEDIDO] Evento sintético de caché: no se compactó ninguna caché ni se liberó RAM medible."),
+                Pair("SIMULATED_OPENCLAW_WEBHOOK", "[SIMULATION][NO MEDIDO] Evento sintético de webhook: no se abrió ninguna conexión y ningún payload llegó al teléfono."),
+                Pair("SIMULATED_SYSTEM_MONITOR", "[SIMULATION][NO MEDIDO] Evento sintético de telemetría: CPU, batería y RAM no fueron leídos del dispositivo en este evento.")
             )
             var index = 0
             while (isSimulationModeActive) {

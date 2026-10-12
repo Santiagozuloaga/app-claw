@@ -185,7 +185,7 @@ fun DashboardScreen(
             )
             StatusCard(
                 title = "Modelo",
-                value = if (ollamaConfig.useOnDeviceLiteRTFallback) "LOCAL" else "HOST",
+                value = if (ollamaConfig.useOnDeviceLiteRTFallback) "SIN RUNTIME" else "HTTP",
                 subtitle = modfile.baseModel,
                 icon = Icons.Default.CloudSync,
                 iconColor = NeonPrimary,

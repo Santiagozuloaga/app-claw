@@ -52,6 +52,7 @@ fun JarvisChatScreen(
     onNavigateToLive: () -> Unit
 ) {
     val messages by viewModel.chatMessages.collectAsState()
+    val awaitingRuntime by viewModel.chatAwaitingRuntime.collectAsState()
     val modfile by viewModel.jarvisModfile.collectAsState()
     val selectedAvatarId = modfile.selectedAvatarId
     val listState = rememberLazyListState()
@@ -165,6 +166,21 @@ fun JarvisChatScreen(
 
                 items(messages) { msg ->
                     ChatBubble(msg, palette, selectedAvatarId)
+                }
+
+                // Mientras el runtime piensa (antes del primer token del stream) el chat no queda
+                // mudo: se ve a qué host y modelo se está consultando. El texto del modelo aparece
+                // solo, porque la burbuja se publica con el primer delta del stream.
+                val awaiting = awaitingRuntime
+                if (awaiting != null) {
+                    item {
+                        Text(
+                            text = awaiting,
+                            color = TextMuted,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                        )
+                    }
                 }
 
                 if (messages.isNotEmpty() && messages.last().sender != "USER") {

@@ -571,9 +571,13 @@ class MobileActionEngine(private val context: Context) : TextToSpeech.OnInitList
                 }
 
                 "scan_image_ocr" -> {
-                    val ocr = com.example.clawcode.engine.file.OcrProcessor(context)
-                    speak("Ejecutando reconocimiento óptico de caracteres OCR en la visión")
-                    Pair(true, "OCR Vision text engine active for attachment analysis")
+                    // No se captura ni se procesa ninguna imagen aquí: OcrProcessor se construía y se
+                    // descartaba, y el chat mostraba "OCR Vision text engine active" como resultado.
+                    speak("La acción de OCR no tiene ninguna imagen que procesar")
+                    Pair(
+                        false,
+                        "Ninguna imagen llegó a OCR en esta ruta: no hay texto reconocido que informar."
+                    )
                 }
 
                 "open_github_repository" -> {
@@ -588,9 +592,15 @@ class MobileActionEngine(private val context: Context) : TextToSpeech.OnInitList
                 }
 
                 else -> {
-                    Toast.makeText(context, "Executing $actionName", Toast.LENGTH_SHORT).show()
-                    speak("Ejecutando acción $actionName")
-                    Pair(true, "Simulated execution for $actionName")
+                    // Antes esta rama devolvía true con un texto de ejecución inventado: el chat lo
+                    // mostraba como "Acción ejecutada en el dispositivo" y el modelo recibía ese
+                    // texto como si fuera el resultado real del sistema. Sin Intent mapeado no se
+                    // ejecuta nada, y eso es lo que hay que devolver.
+                    Toast.makeText(context, "Sin acción del sistema para: $actionName", Toast.LENGTH_SHORT).show()
+                    Pair(
+                        false,
+                        "Ningún Intent mapeado para la acción '$actionName': no se ejecutó nada en el dispositivo."
+                    )
                 }
             }
         } catch (e: Exception) {

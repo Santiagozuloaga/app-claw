@@ -2,6 +2,10 @@ package com.example.clawcode.core.model
 
 import android.content.Context
 import com.example.clawcode.core.storage.ModelStorage
+import com.example.clawcode.data.model.OllamaConfig
+import com.example.clawcode.engine.OllamaChatRequest
+import com.example.clawcode.engine.OllamaClient
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,7 +34,11 @@ data class QwenTestInferenceResult(
     val modelVersion: String
 )
 
-class QwenModelBridgeService(private val context: Context) {
+class QwenModelBridgeService(
+    private val context: Context,
+    private val ollamaClient: OllamaClient = OllamaClient(),
+    private val configProvider: () -> OllamaConfig = { OllamaConfig() }
+) {
 
     private val modelStorage = ModelStorage(context)
 
@@ -40,82 +48,151 @@ class QwenModelBridgeService(private val context: Context) {
     private val _lastTestResult = MutableStateFlow<QwenTestInferenceResult?>(null)
     val lastTestResult: StateFlow<QwenTestInferenceResult?> = _lastTestResult.asStateFlow()
 
-    var activeModelName: String = "Qwen 3.5 3B GGUF (Q4_K_M)"
+    var activeModelName: String = "sin verificar"
         private set
 
+    private var activeQuantType: String = ""
+    private var activeContextLength: Int = 0
+
+    /**
+     * Carga REAL: la app no mapea tensores GGUF en el proceso, delega en el runtime local.
+     * Por eso "cargar" significa verificar contra el servidor qué modelo sirve de verdad y
+     * reportar su tamaño, cuantización y contexto medidos, en lugar de cifras inventadas.
+     */
     suspend fun loadQwenModelAsync(modelDescriptor: ModelDescriptor): Boolean = withContext(Dispatchers.IO) {
+        val config = configProvider()
         try {
-            _bridgeState.value = QwenModelBridgeState.Loading(10, "Verificando peso y asignación de memoria RAM...")
-            kotlinx.coroutines.delay(200)
+            _bridgeState.value = QwenModelBridgeState.Loading(20, "Consultando el runtime local en ${config.hostUrl}...")
 
-            _bridgeState.value = QwenModelBridgeState.Loading(35, "Mapeando tensores GGUF en memoria (Vivo V25 safe mode)...")
-            kotlinx.coroutines.delay(350)
+            val catalogue = ollamaClient.listCompletionModels(config.hostUrl).getOrElse { error ->
+                _bridgeState.value = QwenModelBridgeState.Error(
+                    "No se pudo verificar '${modelDescriptor.name}' en el runtime local: " +
+                            (error.message ?: error.javaClass.simpleName)
+                )
+                return@withContext false
+            }
+            val localModels = catalogue.filter { !it.isCloudStub }
 
-            _bridgeState.value = QwenModelBridgeState.Loading(75, "Inicializando contexto de ${modelDescriptor.contextLength} tokens...")
-            kotlinx.coroutines.delay(250)
+            _bridgeState.value = QwenModelBridgeState.Loading(
+                55,
+                "Resolviendo '${modelDescriptor.name}' contra ${localModels.size} modelo(s) local(es) del servidor..."
+            )
 
-            val sizeMb = (modelDescriptor.sizeBytes / (1024f * 1024f)).coerceAtLeast(1850f)
-            activeModelName = modelDescriptor.name
+            val resolved = localModels.firstOrNull { it.name.equals(modelDescriptor.name, ignoreCase = true) }
+                ?: localModels.firstOrNull { it.name.equals(config.modelName, ignoreCase = true) }
+                ?: localModels.firstOrNull()
+
+            if (resolved == null) {
+                _bridgeState.value = QwenModelBridgeState.Error(
+                    "El runtime ${config.hostUrl} no expone ningún modelo local descargado " +
+                            "(${catalogue.size} entrada(s), todas stub en la nube)."
+                )
+                return@withContext false
+            }
+
+            _bridgeState.value = QwenModelBridgeState.Loading(85, "Leyendo peso y cuantización reales de '${resolved.name}'...")
+
+            activeModelName = resolved.name
+            activeQuantType = resolved.quantType.ifBlank { modelDescriptor.quantType }
+            activeContextLength = resolved.contextLength
 
             _bridgeState.value = QwenModelBridgeState.Ready(
-                modelName = modelDescriptor.name,
-                quantType = modelDescriptor.quantType,
-                contextLength = modelDescriptor.contextLength,
-                loadedSizeMb = sizeMb
+                modelName = resolved.name,
+                quantType = activeQuantType,
+                contextLength = activeContextLength,
+                loadedSizeMb = resolved.sizeBytes / (1024f * 1024f)
             )
             true
+        } catch (ce: CancellationException) {
+            throw ce
         } catch (e: Exception) {
-            _bridgeState.value = QwenModelBridgeState.Error("Error al cargar tensores Qwen: ${e.message}")
+            _bridgeState.value = QwenModelBridgeState.Error(
+                "Error al verificar el modelo en el runtime local: ${e.message}"
+            )
             false
         }
     }
 
+    /**
+     * Prueba de inferencia REAL contra el runtime local configurado (Ollama).
+     * Sustituye a la simulación anterior de tokens/latencia: todas las métricas
+     * devueltas provienen del servidor de inferencia, no de valores inventados.
+     */
     suspend fun runTestInference(prompt: String): QwenTestInferenceResult = withContext(Dispatchers.IO) {
         val startTime = System.currentTimeMillis()
         _bridgeState.value = QwenModelBridgeState.Inferring(currentTokens = 0, tokensPerSecond = 0f)
 
-        // Stream simulation
-        val responseText = when {
-            prompt.contains("hola", ignoreCase = true) || prompt.contains("jarvis", ignoreCase = true) ->
-                "Hola, soy JARVIS respaldado por Qwen 3.5 GGUF local. Todos los subsistemas de inferencia operan con baja latencia en tu dispositivo Vivo V25."
-            prompt.contains("codigo", ignoreCase = true) || prompt.contains("code", ignoreCase = true) ->
-                "```kotlin\n// Demostración Inferencia Qwen GGUF\nfun runTask() {\n    println(\"Subproceso ejecutado en background thread\")\n}\n```"
-            else ->
-                "Inferencia completada exitosamente mediante el puente Qwen 3.5 GGUF. Procesado en hilo de fondo 'Dispatchers.IO' sin bloqueos del hilo principal."
-        }
-
-        val tokens = responseText.length / 4
-        for (i in 1..tokens) {
-            val elapsed = (System.currentTimeMillis() - startTime).coerceAtLeast(1)
-            val tps = (i * 1000f) / elapsed
-            _bridgeState.value = QwenModelBridgeState.Inferring(currentTokens = i, tokensPerSecond = tps)
-            kotlinx.coroutines.delay(25)
-        }
-
-        val totalTime = System.currentTimeMillis() - startTime
-        val finalTps = (tokens * 1000f) / totalTime.coerceAtLeast(1)
-
-        val result = QwenTestInferenceResult(
-            outputText = responseText,
-            latencyMs = totalTime,
-            tokensPerSecond = finalTps,
-            ramUsedMb = 2450.0f,
-            modelVersion = activeModelName
+        val config = configProvider()
+        val reply = ollamaClient.chat(
+            OllamaChatRequest(
+                hostUrl = config.hostUrl,
+                model = config.modelName,
+                systemPrompt = TEST_SYSTEM_PROMPT,
+                history = emptyList(),
+                userText = prompt,
+                temperature = 0.7f,
+                topP = 0.9f,
+                stopTokens = emptyList(),
+                maxTokens = TEST_MAX_TOKENS
+            )
         )
 
-        _lastTestResult.value = result
-        _bridgeState.value = QwenModelBridgeState.Ready(
-            modelName = activeModelName,
-            quantType = "Q4_K_M",
-            contextLength = 8192,
-            loadedSizeMb = 1850.0f
-        )
+        reply.fold(
+            onSuccess = { inference ->
+                activeModelName = inference.model
+                val footprint = ollamaClient.loadedModelFootprint(config.hostUrl, inference.model).getOrNull()
+                if (footprint != null) {
+                    activeQuantType = footprint.quantType
+                    activeContextLength = footprint.contextLength
+                }
 
-        result
+                val result = QwenTestInferenceResult(
+                    outputText = inference.text,
+                    latencyMs = inference.latencyMs,
+                    tokensPerSecond = inference.tokensPerSecond,
+                    ramUsedMb = footprint?.ramMb ?: processMemoryMb(),
+                    modelVersion = "${inference.model} @ ${config.hostUrl}"
+                )
+
+                _lastTestResult.value = result
+                _bridgeState.value = QwenModelBridgeState.Ready(
+                    modelName = inference.model,
+                    quantType = activeQuantType,
+                    contextLength = activeContextLength,
+                    loadedSizeMb = footprint?.ramMb ?: 0f
+                )
+                result
+            },
+            onFailure = { error ->
+                val reason = error.message ?: error.javaClass.simpleName
+                _bridgeState.value = QwenModelBridgeState.Error("Inferencia real fallida: $reason")
+
+                val result = QwenTestInferenceResult(
+                    outputText = "Sin respuesta del modelo: $reason",
+                    latencyMs = System.currentTimeMillis() - startTime,
+                    tokensPerSecond = 0f,
+                    ramUsedMb = 0f,
+                    modelVersion = "${config.modelName} @ ${config.hostUrl}"
+                )
+                _lastTestResult.value = result
+                result
+            }
+        )
+    }
+
+    private fun processMemoryMb(): Float {
+        val runtime = Runtime.getRuntime()
+        return (runtime.totalMemory() - runtime.freeMemory()) / (1024f * 1024f)
     }
 
     suspend fun unloadModelAsync() = withContext(Dispatchers.IO) {
         _bridgeState.value = QwenModelBridgeState.Unloaded
         _lastTestResult.value = null
+    }
+
+    private companion object {
+        const val TEST_MAX_TOKENS = 256
+        const val TEST_SYSTEM_PROMPT =
+            "Eres JARVIS, el agente de pruebas del runtime CLAW. Responde de forma breve y directa."
     }
 }

@@ -107,11 +107,14 @@ enum class ThermalState(val displayName: String) {
 data class JarvisModfile(
     val id: String = "modfile-1",
     val agentName: String = "JARVIS_Claw_Standard",
-    val baseModel: String = "CLAW Standard (Qwen 3.5 4-bit LiteRT)",
+    val baseModel: String = "Runtime HTTP externo (la app no trae pesos embebidos)",
     val systemPrompt: String = """
-    You are JARVIS, an autonomous AI agent running locally on Android using the unified CLAW Standard engine.
-    You have full access to Google Edge Mobile Actions, OpenClaw WhatsApp bridge, and local system intents.
-    When asked to open apps, send emails, schedule meetings, create notion notes, or speak, execute the corresponding Mobile Action.
+    You are JARVIS, an assistant whose reasoning is served by an external Ollama runtime reached over HTTP;
+    this Android app embeds no model weights and performs no on-device NPU/LiteRT/GGUF inference.
+    You can trigger Android system intents: when the user asks to open apps, send emails, schedule meetings,
+    create notion notes, or speak, execute the corresponding Mobile Action.
+    When asked how or where you run, describe only what the configured host and model can actually do, and say
+    plainly if the runtime did not answer instead of inventing an on-device answer.
     """.trimIndent(),
     val temperature: Float = 0.7f,
     val topP: Float = 0.9f,
@@ -179,14 +182,23 @@ data class ChatMessage(
 )
 
 data class HardwareTelemetry(
-    val cpuUsagePercent: Int = 24,
-    val cpuCores: Int = 8,
-    val npuGpuAccelerator: String = "LiteRT Vulkan (NPU/Adreno)",
-    val ramUsedGb: Float = 3.6f,
-    val ramTotalGb: Float = 8.0f,
-    val batteryLevelPercent: Int = 88,
-    val batteryTemperatureC: Float = 33.5f,
-    val tokensPerSecond: Float = 42.8f,
+    // 0 = sin medir. El 24 de fábrica se mostraba como carga de CPU real antes de cualquier sondeo.
+    val cpuUsagePercent: Int = 0,
+    val cpuCores: Int = Runtime.getRuntime().availableProcessors(),
+    // Nada de esta build ejecuta inferencia en NPU/GPU; el antiguo "LiteRT Vulkan (NPU/Adreno)"
+    // describía un acelerador que la app no tiene ni consulta.
+    val npuGpuAccelerator: String = "Ninguno (esta build no acelera inferencia en NPU/GPU)",
+    val ramUsedGb: Float = 0f,
+    val ramTotalGb: Float = 0f,
+    val batteryLevelPercent: Int = -1,
+    val batteryTemperatureC: Float = -1f,
+    // 0 hasta que una inferencia real lo mida: el antiguo 42.8f de fábrica se mostraba
+    // en el Dashboard como si fuera una velocidad obtenida del modelo.
+    val tokensPerSecond: Float = 0f,
+    // Instantánea anterior de /proc/stat, necesaria para calcular la carga como delta entre
+    // dos sondeos. 0 = todavía sin lectura previa.
+    val cpuTotalJiffies: Long = 0L,
+    val cpuIdleJiffies: Long = 0L,
     val totalContextTokens: Int = 16384
 )
 
@@ -209,7 +221,9 @@ data class OllamaConfig(
     val hostUrl: String = "http://10.0.2.2:11434",
     val modelName: String = "qwen3.5:custom-claw",
     val openClawWebhookUrl: String = "https://api.openclaw.io/v1/whatsapp/webhook",
-    val useOnDeviceLiteRTFallback: Boolean = true,
+    // La app no tiene runtime en proceso: el valor de fábrica no puede decir "local".
+    // El usuario sigue pudiendo marcarlo en Ajustes ("Procesamiento Local").
+    val useOnDeviceLiteRTFallback: Boolean = false,
     val isConnected: Boolean = true
 )
 
