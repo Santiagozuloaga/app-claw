@@ -179,7 +179,7 @@ fun UnifiedConsoleScreen(viewModel: ClawViewModel) {
             ) {
                 TelemetryMiniChip("BATERÍA", "${hardware.batteryLevelPercent}%", if (hardware.batteryLevelPercent > 20) NeonEmerald else RedError, Modifier.weight(1f))
                 TelemetryMiniChip("RAM", "${"%.1f".format(hardware.ramUsedGb)} GB", NeonAmber, Modifier.weight(1f))
-                TelemetryMiniChip("NPU / GPU", "100% On-Device", NeonTeal, Modifier.weight(1.2f))
+                TelemetryMiniChip("NPU / GPU", "100% por runtime HTTP, no dentro del teléfono", NeonTeal, Modifier.weight(1.2f))
             }
 
             Spacer(modifier = Modifier.height(12.dp))

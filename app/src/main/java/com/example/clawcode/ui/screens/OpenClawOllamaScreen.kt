@@ -92,7 +92,7 @@ fun OpenClawOllamaScreen(viewModel: ClawViewModel) {
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Arquitectura Híbrida On-Device & Remote",
+                        text = "Arquitectura actual: sólo runtime HTTP externo (no hay ejecución en el dispositivo)",
                         color = NeonPurple,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
@@ -102,7 +102,7 @@ fun OpenClawOllamaScreen(viewModel: ClawViewModel) {
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = "• Modelos Locales On-Device (LiteRT-LM / FunctionGemma 270M): Ejecutan acciones móviles al instante sin internet (<100ms).\n" +
+                    text = "• Modelos Locales en el teléfono: NO disponibles en esta build (ninguna ruta carga pesos en el proceso); cada turno va al runtime HTTP configurado.\n" +
                            "• Modelos Remotos (Ollama Qwen 3.5 7B/14B): Procesan razonamiento complejo a través de OpenClaw WhatsApp Webhook.",
                     color = TextSecondary,
                     fontSize = 11.sp,
@@ -225,7 +225,7 @@ fun OpenClawOllamaScreen(viewModel: ClawViewModel) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Fallback a LiteRT-LM (Offline)",
+                        text = "Fallback a LiteRT-LM: NO disponible en esta build",
                         color = TextPrimary,
                         fontSize = 12.sp
                     )

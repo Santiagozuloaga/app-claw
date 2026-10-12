@@ -219,7 +219,7 @@ fun DiskSpaceManagerScreen(viewModel: ClawViewModel) {
                     Icon(Icons.Default.ModelTraining, contentDescription = "No models", tint = TextMuted, modifier = Modifier.size(36.dp))
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("No hay modelos pesados descargados localmente.", color = TextMuted, fontSize = 12.sp)
-                    Text("El motor está operando en modo ultraligero LiteRT Fallback.", color = TextSecondary, fontSize = 11.sp)
+                    Text("El APK no trae pesos embebidos: los turnos salen al runtime HTTP configurado, y en esta build no hay modelo local cargado en el dispositivo.", color = TextSecondary, fontSize = 11.sp)
                 }
             }
         } else {

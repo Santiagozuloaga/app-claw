@@ -57,8 +57,21 @@ class JarvisVoiceUnitTest {
     @Test
     fun testSystemTelemetryInitialization() = runBlocking {
         val telemetry = clawEngine.hardwareTelemetry.value
-        assertNotNull("Telemetry object should not be null", telemetry)
-        assertTrue("Battery level should be valid", telemetry.batteryLevelPercent in 0..100)
-        assertTrue("CPU cores should be greater than 0", telemetry.cpuCores > 0)
+        assertNotNull("El objeto de telemetría debe existir", telemetry)
+        // Un motor recién creado no ha sondeado nada: -1 es "sin medir" y dejaba de ser válido
+        // cuando la fábrica venía con 88 %. Sólo tras el primer sondeo cae en 0..100.
+        assertTrue(
+            "La batería debe estar sin medir (-1) o medida (0..100), nunca un valor de fábrica",
+            telemetry.batteryLevelPercent == -1 || telemetry.batteryLevelPercent in 0..100
+        )
+        assertEquals(
+            "Sin sondeo previo la carga de CPU es 0, no un número al azar",
+            0, telemetry.cpuUsagePercent
+        )
+        assertEquals(
+            "Sin dos lecturas de /proc/stat no hay instantánea guardada",
+            0L, telemetry.cpuTotalJiffies
+        )
+        assertTrue("Los núcleos sí se consultan a la JVM", telemetry.cpuCores > 0)
     }
 }

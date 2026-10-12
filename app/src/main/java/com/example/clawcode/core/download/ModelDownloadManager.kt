@@ -39,7 +39,7 @@ class ModelDownloadManager(private val storage: ModelStorage) {
                     bytesDownloaded = existingBytes,
                     totalBytes = targetBytes,
                     progressPercent = if (targetBytes > 0) (existingBytes.toFloat() / targetBytes * 100f) else 0f,
-                    downloadSpeedKbps = 18500L,
+                    downloadSpeedKbps = 0L,
                     status = DownloadStatus.DOWNLOADING
                 ))
             }
@@ -53,44 +53,83 @@ class ModelDownloadManager(private val storage: ModelStorage) {
                 val useRealNetwork = model.downloadUrl.startsWith("http")
                 
                 if (useRealNetwork) {
+                    var conexionHttp: java.net.HttpURLConnection? = null
                     try {
                         val url = java.net.URL(model.downloadUrl)
                         val connection = url.openConnection() as java.net.HttpURLConnection
+                        conexionHttp = connection
                         connection.requestMethod = "GET"
                         if (existingBytes > 0) {
                             connection.setRequestProperty("Range", "bytes=$existingBytes-")
                         }
                         connection.connect()
 
+                        val downloadStartedAt = System.currentTimeMillis()
                         val stream = connection.inputStream
                         val buffer = ByteArray(8192)
                         var bytesRead: Int
                         var lastUpdateTime = System.currentTimeMillis()
-                        
+                        var lastUpdateBytes = currentBytes
+
                         while (stream.read(buffer).also { bytesRead = it } != -1 && isActive && pausedStateMap[model.id] != true) {
                             outputStream.write(buffer, 0, bytesRead)
                             currentBytes += bytesRead
-                            
+
                             val currentTime = System.currentTimeMillis()
                             if (currentTime - lastUpdateTime > 500) {
                                 val pct = (currentBytes.toFloat() / targetBytes.toFloat() * 100f).coerceAtMost(100f)
+                                // Velocidad realmente observada entre dos refrescores, no un número
+                                // escrito a mano: 18500 kbps aparecían antes de leer un solo byte.
+                                val elapsedMs = (currentTime - lastUpdateTime).coerceAtLeast(1L)
+                                val speedKbps = (currentBytes - lastUpdateBytes) * 1000L / 1024L / elapsedMs
                                 _downloadProgresses.update { map ->
                                     map + (model.id to map[model.id]!!.copy(
                                         bytesDownloaded = currentBytes,
                                         progressPercent = pct,
+                                        downloadSpeedKbps = speedKbps,
                                         status = DownloadStatus.DOWNLOADING
                                     ))
                                 }
+                                lastUpdateBytes = currentBytes
                                 lastUpdateTime = currentTime
                             }
                         }
                         stream.close()
+
+                        // Cierre de la medición: el corte de 500 ms deja fuera las descargas rápidas,
+                        // y la pantalla mostraba "0 bytes" con el modelo ya instalado. Se publica el
+                        // total y la velocidad media realmente observada.
+                        val elapsedTotalMs = (System.currentTimeMillis() - downloadStartedAt).coerceAtLeast(1L)
+                        val averageKbps =
+                            (currentBytes - existingBytes) * 1000L / 1024L / elapsedTotalMs
+                        _downloadProgresses.update { map ->
+                            val current = map[model.id] ?: return@update map
+                            map + (model.id to current.copy(
+                                bytesDownloaded = currentBytes,
+                                progressPercent = (currentBytes.toFloat() / targetBytes.toFloat() * 100f)
+                                    .coerceAtMost(100f),
+                                downloadSpeedKbps = averageKbps,
+                                status = DownloadStatus.DOWNLOADING
+                            ))
+                        }
                     } catch (e: Exception) {
-                        // Fallback a simulación si falla la red, útil para entornos de preview/sandbox
-                        runSimulation(model, outputStream, existingBytes, targetBytes)
+                        // Sin red no se fabrican pesos: antes caía en runSimulation() y escribía un
+                        // .gguf de relleno que la app mostraba como "modelo descargado".
+                        failDownload(model.id, "La descarga real falló (${e.javaClass.simpleName}: " +
+                                "${e.message ?: "sin mensaje"}). No se simulan pesos locales.")
+                        onComplete(false)
+                        return@launch
+                    } finally {
+                        // Fase 7: sin disconnect() el socket de la descarga quedaba retenido hasta
+                        // el colector, también al cancelar o al fallar a mitad.
+                        conexionHttp?.disconnect()
                     }
                 } else {
-                    runSimulation(model, outputStream, existingBytes, targetBytes)
+                    failDownload(model.id, "El descriptor '${model.name}' no trae URL de descarga " +
+                            "http(s) real ('${model.downloadUrl}'). Sin URL no hay pesos que instalar; " +
+                            "esta build no simula descargas.")
+                    onComplete(false)
+                    return@launch
                 }
 
                 outputStream.close()
@@ -114,7 +153,12 @@ class ModelDownloadManager(private val storage: ModelStorage) {
                     chunkFile.copyTo(finalModelFile, overwrite = true)
                     chunkFile.delete()
 
-                    val isValid = Sha256Verifier.verifySize(finalModelFile, targetBytes)
+                    // verifyFileHash devuelve true para manifiestos de desarrollo (sha256 vacío,
+                    // 'dummy_sha256' o truncado), así que añadirlo no rompe esa ruta: con un hash
+                    // real ya no se instala un archivo corrupto o sustituido, que antes pasaba por
+                    // bueno porque sólo se comparaba el tamaño.
+                    val isValid = Sha256Verifier.verifySize(finalModelFile, targetBytes) &&
+                            Sha256Verifier.verifyFileHash(finalModelFile, model.sha256)
                     if (isValid) {
                         _downloadProgresses.update { map ->
                             map + (model.id to map[model.id]!!.copy(
@@ -130,6 +174,9 @@ class ModelDownloadManager(private val storage: ModelStorage) {
                                 errorMessage = "Error de integridad SHA256 / Tamaño. Archivo descartado."
                             ))
                         }
+                        // El mensaje decía "descartado" y el fichero se quedaba en la carpeta de
+                        // modelos, listo para aparecer como instalado en un próximo arranque.
+                        runCatching { storage.deleteModel(model.id) }
                         onComplete(false)
                     }
                 }
@@ -147,31 +194,13 @@ class ModelDownloadManager(private val storage: ModelStorage) {
         activeDownloadJobs[model.id] = job
     }
     
-    private suspend fun runSimulation(model: ModelDescriptor, outputStream: FileOutputStream, existingBytes: Long, targetBytes: Long) {
-        val chunkSize = (targetBytes / 20).coerceAtLeast(10000000L) // 20 chunks
-        var currentBytes = existingBytes
-        while (currentBytes < targetBytes && currentCoroutineContext().isActive && pausedStateMap[model.id] != true) {
-            val nextChunk = (chunkSize).coerceAtMost(targetBytes - currentBytes)
-            // Simulate receiving buffer
-            val buffer = ByteArray(nextChunk.toInt().coerceAtMost(1024 * 1024))
-            outputStream.write(buffer)
-            currentBytes += nextChunk
-            outputStream.flush()
-
-            val pct = (currentBytes.toFloat() / targetBytes.toFloat() * 100f).coerceAtMost(100f)
-            val speed = (15000..25000).random().toLong()
-
-            _downloadProgresses.update { map ->
-                map + (model.id to ModelDownloadProgress(
-                    modelId = model.id,
-                    bytesDownloaded = currentBytes,
-                    totalBytes = targetBytes,
-                    progressPercent = pct,
-                    downloadSpeedKbps = speed,
-                    status = DownloadStatus.DOWNLOADING
-                ))
-            }
-            delay(350)
+    private fun failDownload(modelId: String, reason: String) {
+        _downloadProgresses.update { map ->
+            val current = map[modelId]
+            if (current == null) map else map + (modelId to current.copy(
+                status = DownloadStatus.ERROR,
+                errorMessage = reason
+            ))
         }
     }
 

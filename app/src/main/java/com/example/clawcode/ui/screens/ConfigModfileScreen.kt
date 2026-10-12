@@ -323,15 +323,22 @@ fun AgentPersonalitySettings(viewModel: ClawViewModel) {
         ConfigSection("AJUSTES DE MODELO") {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 ModelOption("Lite", selectedModel == "Lite") { 
-                    viewModel.updateJarvisModfile(jarvisModfile.agentName, "CLAW Lite (Qwen 3.5)", jarvisModfile.systemPrompt, jarvisModfile.temperature, jarvisModfile.topP, jarvisModfile.wakeWord, jarvisModfile.enableVoiceTTS)
+                    viewModel.updateJarvisModfile(jarvisModfile.agentName, "CLAW Lite (etiqueta del modfile)", jarvisModfile.systemPrompt, jarvisModfile.temperature, jarvisModfile.topP, jarvisModfile.wakeWord, jarvisModfile.enableVoiceTTS)
                 }
                 ModelOption("Standard", selectedModel == "Standard") { 
-                    viewModel.updateJarvisModfile(jarvisModfile.agentName, "CLAW Standard (Qwen 3.5 4-bit LiteRT)", jarvisModfile.systemPrompt, jarvisModfile.temperature, jarvisModfile.topP, jarvisModfile.wakeWord, jarvisModfile.enableVoiceTTS)
+                    viewModel.updateJarvisModfile(jarvisModfile.agentName, "CLAW Standard (etiqueta del modfile)", jarvisModfile.systemPrompt, jarvisModfile.temperature, jarvisModfile.topP, jarvisModfile.wakeWord, jarvisModfile.enableVoiceTTS)
                 }
                 ModelOption("Pro", selectedModel == "Pro") { 
-                    viewModel.updateJarvisModfile(jarvisModfile.agentName, "CLAW Pro (Gemma 7B)", jarvisModfile.systemPrompt, jarvisModfile.temperature, jarvisModfile.topP, jarvisModfile.wakeWord, jarvisModfile.enableVoiceTTS)
+                    viewModel.updateJarvisModfile(jarvisModfile.agentName, "CLAW Pro (etiqueta del modfile)", jarvisModfile.systemPrompt, jarvisModfile.temperature, jarvisModfile.topP, jarvisModfile.wakeWord, jarvisModfile.enableVoiceTTS)
                 }
             }
+            // Estos tres botones sólo rotulan el modfile; el modelo que contesta es el del runtime configurado.
+            Text(
+                text = "Lite / Standard / Pro son etiquetas del modfile (se envían como contexto al modelo). El runtime que atiende cada turno es el configurado en Ollama, y `/agent model` muestra cuál es.",
+                color = TextMuted,
+                fontSize = 11.sp,
+                modifier = Modifier.padding(top = 8.dp)
+            )
         }
         
         ConfigSection("PERSONALIDAD Y SINTETIZADOR DE VOZ") {
@@ -415,7 +422,7 @@ fun SecurityTelemetrySettings(viewModel: ClawViewModel) {
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         ConfigSection("SEGURIDAD") {
-            ConfigSwitchRow("Procesamiento Local", ollamaConfig.useOnDeviceLiteRTFallback) { 
+            ConfigSwitchRow("Preferencia: procesar en el dispositivo (aún sin runtime local)", ollamaConfig.useOnDeviceLiteRTFallback) { 
                 viewModel.updateOllamaConfig(ollamaConfig.hostUrl, ollamaConfig.modelName, ollamaConfig.openClawWebhookUrl, it)
             }
             ConfigSwitchRow("Bloqueo Biométrico", biometricLock) { biometricLock = it }

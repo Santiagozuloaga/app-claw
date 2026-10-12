@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Desde Android 9 (API 28) el tráfico HTTP en claro está deshabilitado por defecto y esta app
+    tiene targetSdk 35, así que sin este fichero TODA llamada a Ollama falla en dispositivo real con
+    "java.io.IOException: Cleartext HTTP traffic to 127.0.0.1 not permitted" y el chat cae en la
+    respuesta estática de reserva. La exención automática de loopback no aplica aquí: sólo existe
+    desde Android 17 (API 37) y el minSdk de la app es 24.
+
+    Se autoriza en claro ÚNICAMENTE el runtime de inferencia local. El base-config sigue en false
+    para que api.notion.com, api.github.com, api.whatsapp.com y api.openclaw.io —que la app ya
+    llama siempre por https— no puedan degradarse a texto plano y filtrar sus tokens.
+
+    La plataforma no admite comodines ni rangos CIDR, sólo direcciones concretas: por eso un Ollama
+    en la LAN (http://192.168.1.x:11434) no queda cubierto y hay que añadir su IP aquí a mano.
+-->
+<network-security-config>
+
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Ollama en el propio teléfono (p. ej. dentro de Termux) -->
+        <domain>localhost</domain>
+        <domain>ip6-localhost</domain>
+        <domain>127.0.0.1</domain>
+        <domain>[::1]</domain>
+        <!-- Alias del emulador Android para el loopback del anfitrión: hostUrl de fábrica -->
+        <domain>10.0.2.2</domain>
+    </domain-config>
+
+</network-security-config>

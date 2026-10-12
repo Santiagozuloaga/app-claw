@@ -46,7 +46,7 @@ fun JarvisAgentDesignerScreen(viewModel: ClawViewModel) {
 
     val rawModfileCode = remember(agentName, baseModel, systemPrompt, temperature, topP, wakeWord) {
         """
-        # JARVIS Modfile (Qwen 3.5 / Ollama Agent)
+        # JARVIS Modfile (agente para el runtime Ollama que configures)
         FROM $baseModel
 
         # System Prompt definition
@@ -92,7 +92,7 @@ fun JarvisAgentDesignerScreen(viewModel: ClawViewModel) {
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Crea tu Modfile Ollama Qwen 3.5 local con voz, visión y archivos",
+                    text = "Crea tu Modfile para el runtime Ollama que configures, con voz, visión y archivos",
                     color = TextSecondary,
                     fontSize = 12.sp
                 )
@@ -136,7 +136,7 @@ fun JarvisAgentDesignerScreen(viewModel: ClawViewModel) {
                         shape = RoundedCornerShape(4.dp)
                     ) {
                         Text(
-                            text = "CLAW STANDARD (4.2 GB)",
+                            text = "CLAW STANDARD (etiqueta sin pesos)",
                             color = NeonEmerald,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
@@ -243,7 +243,7 @@ fun JarvisAgentDesignerScreen(viewModel: ClawViewModel) {
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Motor Único: CLAW Standard (Qwen 3.5 LiteRT)",
+                            text = "Motor Único: el runtime que configures (Ollama por HTTP)",
                             color = TextPrimary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
@@ -267,7 +267,7 @@ fun JarvisAgentDesignerScreen(viewModel: ClawViewModel) {
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = "La aplicación se instala ligera (~100 MB). Al iniciar por primera vez, descarga y provisiona el modelo único CLAW Standard (Qwen 3.5 4-bit LiteRT ~4.2 GB) y carga la personalidad independiente de assets/ (system_prompt.txt, personality.json, config.json, capabilities.json). Sin complicaciones de múltiples versiones.",
+                    text = "El APK se instala ligero y no trae pesos de modelo embebidos: cada turno se envía por HTTP al runtime que configures en Ajustes de Ollama (host + modelo), y `/agent model` informa cuál está atendiendo. La personalidad se carga desde assets/ (system_prompt.txt, personality.json, config.json, capabilities.json). Para inferencia dentro del teléfono todavía falta un runtime local empaquetado: ninguna ruta de esta build carga GGUF ni LiteRT en el proceso.",
                     color = TextSecondary,
                     fontSize = 11.sp,
                     lineHeight = 15.sp
@@ -279,7 +279,7 @@ fun JarvisAgentDesignerScreen(viewModel: ClawViewModel) {
                     Button(
                         onClick = {
                             viewModel.addFileAttachment("personality.json", "JSON", 12, "Especificación de personalidad unificada de CLAW Standard")
-                            viewModel.addFileAttachment("system_prompt.txt", "Text", 4, "System Prompt base para Qwen 3.5 LiteRT")
+                            viewModel.addFileAttachment("system_prompt.txt", "Text", 4, "System Prompt base del agente CLAW")
                             viewModel.addFileAttachment("capabilities.json", "JSON", 8, "Declaración de capacidades y Mobile Actions")
                             Toast.makeText(context, "Configuración de Personalidad CLAW cargada desde assets/", Toast.LENGTH_SHORT).show()
                         },
@@ -295,8 +295,8 @@ fun JarvisAgentDesignerScreen(viewModel: ClawViewModel) {
 
                     OutlinedButton(
                         onClick = {
-                            viewModel.addFileAttachment("claw_standard_qwen3.5.litertlm", "Weights", 4200000, "Pesos unificados CLAW Standard (Qwen 3.5 4-bit LiteRT 4.2GB)")
-                            Toast.makeText(context, "Modelo CLAW Standard (4.2 GB) descargado y listo para ejecución local NPU", Toast.LENGTH_SHORT).show()
+                            viewModel.addFileAttachment("claw_standard.referencia.txt", "Text", 1, "Referencia del modelo base: no se descargó ningún peso y esta build no trae runtime local")
+                            Toast.makeText(context, "Sólo se añadió la referencia al modfile: no se descargó ningún peso (ningún byte salió de la red) y esta build no ejecuta inferencia local", Toast.LENGTH_LONG).show()
                         },
                         border = androidx.compose.foundation.BorderStroke(1.dp, NeonTeal),
                         shape = RoundedCornerShape(6.dp),
@@ -305,7 +305,7 @@ fun JarvisAgentDesignerScreen(viewModel: ClawViewModel) {
                     ) {
                         Icon(imageVector = Icons.Default.DownloadForOffline, contentDescription = null, tint = NeonTeal, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Descargar CLAW Standard", color = NeonTeal, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("Referenciar modelo base", color = NeonTeal, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }

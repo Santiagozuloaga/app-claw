@@ -34,7 +34,9 @@ fun AgentExecutionProgressBar(
     task: AgentTask,
     modifier: Modifier = Modifier,
     estimatedCostUsd: Double = 0.0000,
-    tokensPerSecond: Float = 42.8f,
+    // 0 hasta que el llamador pase una velocidad medida: el 42.8f anterior se renderizaba como
+    // si fuera el rendimiento real del modelo. Coincide con HardwareTelemetry.tokensPerSecond.
+    tokensPerSecond: Float = 0f,
     estimatedTokens: Int = (task.progress * 850).toInt(),
     executionTimeSeconds: Float = task.progress * 2.4f,
     onCancelTask: ((String) -> Unit)? = null
@@ -134,7 +136,7 @@ fun AgentExecutionProgressBar(
                             modifier = Modifier.size(12.dp)
                         )
                         Text(
-                            text = if (estimatedCostUsd == 0.0) "100% NPU (Gratis)" else "\$${String.format("%.4f", estimatedCostUsd)}",
+                            text = if (estimatedCostUsd == 0.0) "sin acelerador en esta build" else "\$${String.format("%.4f", estimatedCostUsd)}",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary
@@ -291,7 +293,7 @@ fun AgentExecutionProgressBar(
                         .padding(10.dp)
                 ) {
                     Text(
-                        text = "DESGLOSE DE CONSUMO & EJECUCIÓN (LITERART NPU)",
+                        text = "DESGLOSE DE CONSUMO Y EJECUCIÓN (SIN ACELERADOR EN ESTA BUILD)",
                         fontSize = 10.sp,
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
@@ -320,7 +322,7 @@ fun AgentExecutionProgressBar(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Eficiencia Térmica NPU:", fontSize = 11.sp, color = TextSecondary)
+                        Text("Eficiencia térmica (CPU, no NPU):", fontSize = 11.sp, color = TextSecondary)
                         Text("98.4% (Óptimo)", fontSize = 11.sp, color = NeonEmerald, fontFamily = FontFamily.Monospace)
                     }
 

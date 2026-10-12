@@ -9,11 +9,15 @@ import com.example.clawcode.engine.MobileActionEngine
 import com.example.clawcode.engine.HardwareTelemetryUtils
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class ClawViewModel(application: Application) : AndroidViewModel(application) {
 
-    val engine = ClawEngine()
+    val engine = ClawEngine(
+        configStore = com.example.clawcode.core.storage.PrefsOllamaConfigStore(application),
+        chatStore = com.example.clawcode.core.storage.PrefsChatHistoryStore(application)
+    )
     val mobileActionEngine = MobileActionEngine(application.applicationContext)
 
     val tasks = engine.tasks.stateIn(
@@ -82,6 +86,12 @@ class ClawViewModel(application: Application) : AndroidViewModel(application) {
         emptyList()
     )
 
+    val chatAwaitingRuntime = engine.chatAwaitingRuntime.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        null
+    )
+
     val hardwareTelemetry = engine.hardwareTelemetry.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
@@ -115,8 +125,25 @@ class ClawViewModel(application: Application) : AndroidViewModel(application) {
     init {
         // Start periodic telemetry updates
         viewModelScope.launch {
-            while (true) {
-                engine.updateHardwareTelemetry(HardwareTelemetryUtils.getRealTelemetry(application.applicationContext, engine.hardwareTelemetry.value))
+            while (isActive) {
+                try {
+                    engine.updateHardwareTelemetry(
+                        HardwareTelemetryUtils.getRealTelemetry(
+                            application.applicationContext,
+                            engine.hardwareTelemetry.value
+                        )
+                    )
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    // La cancelación del viewModelScope debe propagarse; no es un fallo.
+                    throw cancelled
+                } catch (error: Exception) {
+                    // El sondeo usa APIs de plataforma (registerReceiver, getMemoryInfo) que pueden
+                    // lanzar: un SecurityException o un dispositivo con restricciones en segundo
+                    // plano lo dispararía aquí dentro. Sin capturar, la excepción mata el proceso
+                    // cada 5 s y se lleva por delante el chat. La telemetría es informativa, así
+                    // que se registra el fallo y el bucle sigue intentándolo.
+                    engine.logTelemetryFailure(error)
+                }
                 kotlinx.coroutines.delay(5000)
             }
         }
