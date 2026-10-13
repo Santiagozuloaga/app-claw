@@ -23,16 +23,33 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.clawcode.data.model.ConsoleLog
 import com.example.clawcode.ui.theme.*
+import com.example.clawcode.viewmodel.ClawViewModel
 import kotlinx.coroutines.launch
 
 @Composable
 fun TerminalScreen(
+    viewModel: ClawViewModel,
     consoleLogs: List<ConsoleLog>,
     onSendPrompt: (String) -> Unit
 ) {
     var promptInput by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+
+    // Estado real del runtime: isConnected sólo se pone a true después de una inferencia HTTP
+    // exitosa (ClawEngine), y chatAwaitingRuntime no es null mientras un turno está en vuelo.
+    val ollamaConfig by viewModel.ollamaConfig.collectAsState()
+    val awaitingRuntime by viewModel.chatAwaitingRuntime.collectAsState()
+    val estadoRuntime = when {
+        awaitingRuntime != null -> "CONSULTANDO"
+        ollamaConfig.isConnected -> "CONECTADO"
+        else -> "SIN COMPROBAR"
+    }
+    val colorRuntime = when {
+        awaitingRuntime != null -> NeonAmber
+        ollamaConfig.isConnected -> NeonEmerald
+        else -> TextMuted
+    }
 
     // Auto-scroll on new logs
     LaunchedEffect(consoleLogs.size) {
@@ -80,14 +97,17 @@ fun TerminalScreen(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(4.dp))
-                    .background(NeonEmerald.copy(alpha = 0.2f))
+                    // El fondo acompañaba siempre un "ONLINE" fijo; ahora sigue al estado medido.
+                    .background(colorRuntime.copy(alpha = 0.2f))
                     .padding(horizontal = 6.dp, vertical = 2.dp)
             ) {
                 Text(
-                    text = "ONLINE",
+                    // "ONLINE" era un literal sin fuente de conexión: se muestra el estado real del
+                    // runtime HTTP, o "SIN COMPROBAR" cuando ninguna inferencia lo ha confirmado.
+                    text = estadoRuntime,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    color = NeonEmerald
+                    color = colorRuntime
                 )
             }
         }
@@ -97,7 +117,10 @@ fun TerminalScreen(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            listOf("/status", "/tasks", "compact memory", "help").forEach { suggestion ->
+            // Sólo comandos con rama real en ClawEngine.sendConsolePrompt: antes '/tasks' y
+            // 'compact memory' no tenían handler y caían en "no se ejecutó ninguna acción", y
+            // 'help' tampoco está implementado, así que se retiraron del strip.
+            listOf("/status", "/sys", "/agent model", "/diag").forEach { suggestion ->
                 SuggestionChip(
                     onClick = {
                         onSendPrompt(suggestion)

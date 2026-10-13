@@ -134,7 +134,7 @@ fun DashboardScreen(
         ) {
             StatusCard(
                 title = "CPU",
-                value = "${hardware.cpuUsagePercent}%",
+                value = if (hardware.cpuTotalJiffies > 0L) "${hardware.cpuUsagePercent}%" else "sin medir",
                 subtitle = "${hardware.cpuCores} Núcleos",
                 icon = Icons.Default.Memory,
                 iconColor = NeonPrimary,
@@ -157,7 +157,7 @@ fun DashboardScreen(
         ) {
             StatusCard(
                 title = "RAM",
-                value = "${"%.1f".format(hardware.ramUsedGb)} GB",
+                value = if (hardware.ramTotalGb > 0f) "${"%.1f".format(hardware.ramUsedGb)} GB" else "sin medir",
                 subtitle = "de ${hardware.ramTotalGb} GB",
                 icon = Icons.Default.Storage,
                 iconColor = WarningAmber,
@@ -166,7 +166,7 @@ fun DashboardScreen(
             StatusCard(
                 title = "Tokens",
                 value = if (hardware.totalContextTokens > 0) "${hardware.totalContextTokens}" else "sin medir",
-                subtitle = "${hardware.tokensPerSecond} t/s",
+                subtitle = if (hardware.tokensPerSecond > 0f) "${hardware.tokensPerSecond} t/s" else "sin turno medido",
                 icon = Icons.Default.GraphicEq,
                 iconColor = NeonTeal,
                 modifier = Modifier.weight(1f)
@@ -179,10 +179,10 @@ fun DashboardScreen(
         ) {
             StatusCard(
                 title = "Batería",
-                value = "${hardware.batteryLevelPercent}%",
+                value = if (hardware.batteryLevelPercent in 0..100) "${hardware.batteryLevelPercent}%" else "sin sondeo",
                 subtitle = "${hardware.batteryTemperatureC}°C",
                 icon = Icons.Default.BatteryChargingFull,
-                iconColor = if (hardware.batteryLevelPercent > 20) NeonPrimary else RedError,
+                iconColor = if (hardware.batteryLevelPercent in 0..100 && hardware.batteryLevelPercent > 20) NeonPrimary else RedError,
                 modifier = Modifier.weight(1f)
             )
             StatusCard(

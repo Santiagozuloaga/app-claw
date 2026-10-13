@@ -1,5 +1,6 @@
 package com.example.clawcode.ui.screens
 
+import android.os.StatFs
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -29,6 +30,32 @@ fun JarvisAgentDesignerScreen(viewModel: ClawViewModel) {
     val context = LocalContext.current
     val modfile by viewModel.jarvisModfile.collectAsState()
     val fileAttachments by viewModel.fileAttachments.collectAsState()
+    // Telemetría real: HardwareTelemetry usa 0 como marca de "sin medir".
+    val hardware by viewModel.hardwareTelemetry.collectAsState()
+
+    // Espacio libre: lectura real de StatFs sobre el directorio de archivos de la app (el mismo
+    // sondeo que hace DiskSpaceManager). Si la llamada falla, no se imprime ninguna cifra.
+    val freeStorageGb = remember(context) {
+        val dir = context.getExternalFilesDir(null) ?: context.filesDir
+        runCatching {
+            val stat = StatFs(dir.absolutePath)
+            (stat.availableBlocksLong * stat.blockSizeLong) / (1024f * 1024f * 1024f)
+        }.getOrNull()
+    }
+
+    // Ruta de modelos que usa la app (ModelStorage/DiskSpaceManager). Se muestra sólo como ruta:
+    // aquí no se ha escrito ningún peso, así que no se puede verificar integridad de nada.
+    val modelsDirPath = remember(context) {
+        val base = context.getExternalFilesDir(null) ?: context.filesDir
+        java.io.File(base, "models").absolutePath
+    }
+
+    // Texto ya resuelto para no repetir la comprobación de nullabilidad en la composición.
+    val measuredFreeGb = freeStorageGb?.takeIf { it > 0f }
+    val hasFreeStorage = measuredFreeGb != null
+    val freeStorageText = if (measuredFreeGb != null) "%.0f GB".format(measuredFreeGb) else "sin medir"
+    val ramMeasured = hardware.ramTotalGb > 0f
+    val ramTotalText = if (ramMeasured) "%.1f GB".format(hardware.ramTotalGb) else "sin medir"
 
     var agentName by remember(modfile) { mutableStateOf(modfile.agentName) }
     var baseModel by remember(modfile) { mutableStateOf(modfile.baseModel) }
@@ -40,7 +67,8 @@ fun JarvisAgentDesignerScreen(viewModel: ClawViewModel) {
 
     var newFileName by remember { mutableStateOf("especificacion_agente.json") }
     var newFileType by remember { mutableStateOf("JSON") }
-    var newFileSummary by remember { mutableStateOf("Esquema de funciones y memoria contextual para JARVIS") }
+    // Resumen honesto: esta pantalla no abre ningún archivo, así que no puede describir su contenido.
+    var newFileSummary by remember { mutableStateOf("Sólo un nombre escrito en la app: no se ha abierto ningún archivo ni leído ningún byte") }
 
     var isVoiceSpeaking by remember { mutableStateOf(false) }
 
@@ -159,7 +187,12 @@ fun JarvisAgentDesignerScreen(viewModel: ClawViewModel) {
                     ) {
                         Column(modifier = Modifier.padding(6.dp)) {
                             Text("RAM Detectada", fontSize = 9.sp, color = TextMuted)
-                            Text("12 GB (OK)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = NeonEmerald)
+                            Text(
+                                text = ramTotalText,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (ramMeasured) NeonEmerald else TextMuted
+                            )
                         }
                     }
 
@@ -170,7 +203,12 @@ fun JarvisAgentDesignerScreen(viewModel: ClawViewModel) {
                     ) {
                         Column(modifier = Modifier.padding(6.dp)) {
                             Text("Espacio Libre", fontSize = 9.sp, color = TextMuted)
-                            Text("142 GB (OK)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = NeonEmerald)
+                            Text(
+                                text = freeStorageText,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (hasFreeStorage) NeonEmerald else TextMuted
+                            )
                         }
                     }
 
@@ -181,7 +219,14 @@ fun JarvisAgentDesignerScreen(viewModel: ClawViewModel) {
                     ) {
                         Column(modifier = Modifier.padding(6.dp)) {
                             Text("Acelerador Local", fontSize = 9.sp, color = TextMuted)
-                            Text("NPU Vulkan (OK)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = NeonTeal)
+                            // Ninguna build acelera inferencia aquí: se imprime el valor del sondeo,
+                            // que ya declara que no hay NPU/GPU, en lugar de anunciar "NPU Vulkan".
+                            Text(
+                                text = hardware.npuGpuAccelerator.ifBlank { "sin medir" },
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextSecondary
+                            )
                         }
                     }
                 }
@@ -202,14 +247,22 @@ fun JarvisAgentDesignerScreen(viewModel: ClawViewModel) {
                         color = NeonTeal,
                         fontWeight = FontWeight.Bold
                     )
+                    // Nada se ha hasheado en esta pantalla: el hash literal que aparecía aquí era
+                    // el de la cadena vacía y ningún archivo de modelo existe en el dispositivo.
                     Text(
-                        text = "Hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 (MATCH OK)",
+                        text = "Sin ejecutar: en esta sesión no se ha calculado ningún hash, así que no hay MATCH que mostrar.",
                         fontSize = 9.sp,
                         fontFamily = FontFamily.Monospace,
                         color = TextSecondary
                     )
                     Text(
-                        text = "Ubicación: Android/data/com.example.clawcode/files/models/claw_standard.litertlm",
+                        text = "El único verificador real (Sha256Verifier) corre al terminar una descarga en ModelDownloadManager; aquí no se ha descargado ningún peso.",
+                        fontSize = 9.sp,
+                        fontFamily = FontFamily.Monospace,
+                        color = TextSecondary
+                    )
+                    Text(
+                        text = "Ruta de modelos (sin archivos escritos por esta pantalla): $modelsDirPath",
                         fontSize = 9.sp,
                         fontFamily = FontFamily.Monospace,
                         color = TextMuted
@@ -255,7 +308,7 @@ fun JarvisAgentDesignerScreen(viewModel: ClawViewModel) {
                         shape = RoundedCornerShape(4.dp)
                     ) {
                         Text(
-                            text = "100% UNIFICADO",
+                            text = "SIN RUNTIME LOCAL",
                             color = NeonEmerald,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
@@ -267,7 +320,7 @@ fun JarvisAgentDesignerScreen(viewModel: ClawViewModel) {
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = "El APK se instala ligero y no trae pesos de modelo embebidos: cada turno se envía por HTTP al runtime que configures en Ajustes de Ollama (host + modelo), y `/agent model` informa cuál está atendiendo. La personalidad se carga desde assets/ (system_prompt.txt, personality.json, config.json, capabilities.json). Para inferencia dentro del teléfono todavía falta un runtime local empaquetado: ninguna ruta de esta build carga GGUF ni LiteRT en el proceso.",
+                    text = "El APK se instala ligero y no trae pesos de modelo embebidos: cada turno se envía por HTTP al runtime que configures en Ajustes de Ollama (host + modelo), y `/agent model` informa cuál está atendiendo. La personalidad no se carga desde assets/: el APK no incluye ninguna carpeta assets/ con system_prompt.txt, personality.json, config.json ni capabilities.json, así que la única personalidad que llega al modelo es el System Prompt que escribas en este formulario. Para inferencia dentro del teléfono todavía falta un runtime local empaquetado: ninguna ruta de esta build carga GGUF ni LiteRT en el proceso.",
                     color = TextSecondary,
                     fontSize = 11.sp,
                     lineHeight = 15.sp
@@ -278,10 +331,13 @@ fun JarvisAgentDesignerScreen(viewModel: ClawViewModel) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
                         onClick = {
-                            viewModel.addFileAttachment("personality.json", "JSON", 12, "Especificación de personalidad unificada de CLAW Standard")
-                            viewModel.addFileAttachment("system_prompt.txt", "Text", 4, "System Prompt base del agente CLAW")
-                            viewModel.addFileAttachment("capabilities.json", "JSON", 8, "Declaración de capacidades y Mobile Actions")
-                            Toast.makeText(context, "Configuración de Personalidad CLAW cargada desde assets/", Toast.LENGTH_SHORT).show()
+                            // Antes esta pulsación creaba tres adjuntos con tamaños escritos a mano
+                            // (12/4/8 KB) para archivos que la app no lee: ahora no fabrica nada.
+                            Toast.makeText(
+                                context,
+                                "No se ha cargado ningún asset: el APK no trae assets/ ni hay selector de archivos, así que esta pulsación no añade adjuntos ni lee bytes",
+                                Toast.LENGTH_LONG
+                            ).show()
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = NeonEmerald),
                         shape = RoundedCornerShape(6.dp),
@@ -290,12 +346,13 @@ fun JarvisAgentDesignerScreen(viewModel: ClawViewModel) {
                     ) {
                         Icon(imageVector = Icons.Default.FolderZip, contentDescription = null, tint = DarkBackground, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Cargar Personalidad Assets", color = DarkBackground, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("Comprobar Assets de Personalidad", color = DarkBackground, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
 
                     OutlinedButton(
                         onClick = {
-                            viewModel.addFileAttachment("claw_standard.referencia.txt", "Text", 1, "Referencia del modelo base: no se descargó ningún peso y esta build no trae runtime local")
+                            // Sin bytes leídos: sizeKb = 0 es la marca "sin medir" del modelo.
+                            viewModel.addFileAttachment("claw_standard.referencia.txt", "Text", 0, "Referencia del modelo base: no se descargó ningún peso y esta build no trae runtime local")
                             Toast.makeText(context, "Sólo se añadió la referencia al modfile: no se descargó ningún peso (ningún byte salió de la red) y esta build no ejecuta inferencia local", Toast.LENGTH_LONG).show()
                         },
                         border = androidx.compose.foundation.BorderStroke(1.dp, NeonTeal),
@@ -381,7 +438,7 @@ fun JarvisAgentDesignerScreen(viewModel: ClawViewModel) {
                 ) {
                     Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, tint = DarkBackground, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Lanzar Tarea Asíncrona Autónomas (NPU Local)", color = DarkBackground, fontWeight = FontWeight.Bold)
+                    Text("Lanzar Tarea Asíncrona Autónoma", color = DarkBackground, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -421,8 +478,10 @@ fun JarvisAgentDesignerScreen(viewModel: ClawViewModel) {
                     // Voice TTS Test Button
                     IconButton(
                         onClick = {
-                            viewModel.speakVoice("Hola, soy JARVIS. Tu agente personalizado está listo con integración para todas tus aplicaciones Android.")
-                            Toast.makeText(context, "Sintetizando voz JARVIS...", Toast.LENGTH_SHORT).show()
+                            // La voz la pone el sintetizador del sistema: no hay modelo JARVIS propio
+                            // ni integración con "todas las aplicaciones Android".
+                            viewModel.speakVoice("Hola, soy JARVIS. Esta la lee el sintetizador de voz de Android; la personalidad es el Modfile que estés editando.")
+                            Toast.makeText(context, "Probando la voz del sistema con un texto fijo", Toast.LENGTH_SHORT).show()
                         }
                     ) {
                         Icon(
@@ -515,7 +574,9 @@ fun JarvisAgentDesignerScreen(viewModel: ClawViewModel) {
                 Button(
                     onClick = {
                         viewModel.updateJarvisModfile(agentName, baseModel, systemPrompt, temperature, topP, wakeWord, enableVoiceTTS)
-                        Toast.makeText(context, "Modfile guardado exitosamente en la App", Toast.LENGTH_SHORT).show()
+                        // updateJarvisModfile sólo actualiza el estado de la sesión: no escribe ningún
+                        // archivo ni compila un Modfile, pero el System Prompt sí viaja en el próximo turno.
+                        Toast.makeText(context, "Modfile aplicado al estado de la sesión: se usará en el próximo turno; no se ha escrito ningún archivo ni compilado nada", Toast.LENGTH_LONG).show()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = NeonEmerald),
                     shape = RoundedCornerShape(8.dp),
@@ -523,7 +584,7 @@ fun JarvisAgentDesignerScreen(viewModel: ClawViewModel) {
                 ) {
                     Icon(imageVector = Icons.Default.Save, contentDescription = null, tint = DarkBackground, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Guardar y Compilar Modfile Local", color = DarkBackground, fontWeight = FontWeight.Bold)
+                    Text("Aplicar Modfile (sin compilar)", color = DarkBackground, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -573,8 +634,9 @@ fun JarvisAgentDesignerScreen(viewModel: ClawViewModel) {
 
             IconButton(
                 onClick = {
-                    viewModel.addFileAttachment(newFileName, newFileType, 128, newFileSummary)
-                    Toast.makeText(context, "Archivo adjuntado para análisis por JARVIS", Toast.LENGTH_SHORT).show()
+                    // No hay selector de archivos: sizeKb = 0 es "sin medir" y la tarjeta lo muestra así.
+                    viewModel.addFileAttachment(newFileName, newFileType, 0, newFileSummary)
+                    Toast.makeText(context, "Entrada añadida a la lista: no se ha abierto ningún archivo, así que el tamaño está sin medir", Toast.LENGTH_LONG).show()
                 }
             ) {
                 Icon(
@@ -644,12 +706,13 @@ private fun FileAttachmentCard(file: FileAttachmentItem) {
             }
 
             Surface(
-                color = NeonEmerald.copy(alpha = 0.15f),
+                color = if (file.sizeKb > 0) NeonEmerald.copy(alpha = 0.15f) else DarkSurfaceVariant,
                 shape = RoundedCornerShape(6.dp)
             ) {
                 Text(
-                    text = "${file.sizeKb} KB",
-                    color = NeonEmerald,
+                    // sizeKb == 0 es la marca "sin medir": ningún archivo real se ha leído en la app.
+                    text = if (file.sizeKb > 0) "${file.sizeKb} KB" else "tamaño sin medir",
+                    color = if (file.sizeKb > 0) NeonEmerald else TextMuted,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)

@@ -174,8 +174,9 @@ class ClawEngine(
             progress = 0.5f,
             createdAt = time,
             logs = listOf(
-                "[$time] Contexto de Google Search cargado: '${grounding.query}'",
-                "[$time] Fuentes web verificadas: ${grounding.sources.joinToString { it.title }}",
+                "[$time] Contexto de búsqueda: '${grounding.query}'",
+                "[$time] Fuentes obtenidas: ${grounding.sources.size}" +
+                    if (grounding.sources.isEmpty()) " (no hay backend de búsqueda en esta build)" else "",
                 "[$time] Ejecutando tarea asistida por grounding..."
             )
         )
@@ -982,10 +983,6 @@ class ClawEngine(
         )
     }
 
-    fun setSimulatedTemperature(tempC: Float) {
-        _hardwareTelemetry.update { it.copy(batteryTemperatureC = tempC) }
-    }
-
     fun addFileAttachment(fileName: String, fileType: String, sizeKb: Int, summary: String) {
         val newFile = FileAttachmentItem(
             id = "file-" + UUID.randomUUID().toString().take(6),
@@ -993,11 +990,16 @@ class ClawEngine(
             fileType = fileType,
             sizeKb = sizeKb,
             contentSummary = summary,
-            isParsedByJarvis = true
+            // Nadie abre el fichero ni lo parsea en esta ruta: anunciarlo como analizado hacia
+            // que el usuario creyera que su contenido ya estaba en el contexto del modelo.
+            isParsedByJarvis = false
         )
         _fileAttachments.update { listOf(newFile) + it }
-        com.example.clawcode.core.EventBus.tryPublish(com.example.clawcode.core.AppEvent.FileOpened(fileName, fileType))
-        com.example.clawcode.core.EventBus.tryPublish(com.example.clawcode.core.AppEvent.FileParsed(fileName, summary))
+        appendConsoleLog(
+            "FILE_ATTACHMENT",
+            "[SIN PARSEAR] '$fileName' quedó en la lista como referencia. Ningún byte se leyó ni se " +
+                "envió al modelo; no hay selector de ficheros ni parser en esta ruta."
+        )
     }
 
     fun updateOllamaConfig(hostUrl: String, modelName: String, webhookUrl: String, useFallback: Boolean) {
@@ -1083,7 +1085,8 @@ class ClawEngine(
             priority = Priority.HIGH,
             progress = 0.1f,
             createdAt = time,
-            logs = listOf("[$time][ASYNC_INIT] Agente autónomo despertado por wake-word o prompt local.")
+            // No hay detector de wake-word en la app: esto lo dispara siempre una accion del usuario.
+            logs = listOf("[$time][ASYNC_INIT] Bucle de agente iniciado por solicitud del usuario (no hay detector de wake-word).")
         )
         _tasks.update { listOf(newTask) + it }
         recalculateStats()
@@ -1182,10 +1185,11 @@ class ClawEngine(
         _tasks.update { list ->
             list.map { task ->
                 if (task.id == taskId) {
+                    // No hay subagente ni ejecutor detras: poner RUNNING y un 25% de progreso
+                    // inventaba una ejecución. La tarea real se lanza con runAsyncAgentTaskLoop.
                     task.copy(
-                        status = TaskStatus.RUNNING,
-                        progress = 0.25f,
-                        logs = task.logs + "[EXEC] Subagent ${task.agentName} activated. Processing payload..."
+                        logs = task.logs + "[SIN EJECUTOR] runTask no lanza nada por sí solo: esta tarea " +
+                            "no tiene un ejecutor cableado, así que su estado y su progreso no cambian."
                     )
                 } else task
             }
@@ -1219,21 +1223,16 @@ class ClawEngine(
     }
 
     suspend fun compactMemory() {
+        // No hay backend de resumen: esto dormia 1,2 s y multiplicaba el conteo por 0,45, creando
+        // el numero de un ahorro que ningun texto reflejaba. Se reporta lo que pasa de verdad.
         _isCompacting.value = true
-        delay(1200)
-        _memories.update { list ->
-            list.map { item ->
-                if (!item.isCompacted) {
-                    item.copy(
-                        tokenCount = (item.tokenCount * 0.45).toInt(),
-                        isCompacted = true,
-                        updatedAt = horaLocal()
-                    )
-                } else item
-            }
-        }
+        appendConsoleLog(
+            "MEMORY_COMPACT",
+            "[NO EJECUTADA] Compactar memoria necesita un modelo que resuma el texto guardado y esta " +
+                "build no lo llama. Los ${_memories.value.size} elementos conservan su contenido y su " +
+                "conteo original; no se ha liberado nada."
+        )
         _isCompacting.value = false
-        recalculateStats()
     }
 
     fun addMemory(key: String, category: String, value: String) {
@@ -1242,7 +1241,9 @@ class ClawEngine(
             key = key,
             category = category,
             value = value,
-            tokenCount = value.length * 4,
+            // Estimacion burda (4 caracteres por token), no una tokenizacion. El orden de
+            // magnitud anterior (length * 4) inflaba el numero por dieciseis.
+            tokenCount = (value.length / 4).coerceAtLeast(1),
             isCompacted = false,
             updatedAt = horaLocal()
         )
@@ -1393,12 +1394,15 @@ class ClawEngine(
         " • Throughput medido: ${"%.2f".format(_hardwareTelemetry.value.tokensPerSecond)} t/s\n" +
         " • WhatsApp Bridge: Webhook ${_ollamaConfig.value.openClawWebhookUrl.ifBlank { "no configurado" }} " +
         "(la app no abre su propio socket: lo recibe el servidor OpenClaw)\n" +
-        " • Mobile Action Intents: Dispatcher de intents del sistema activo\n" +
+        " • Mobile Action Intents: dispatcher cableado en el motor; si un turno lo usó, aparece en la consola\n" +
         " • Memory Token Compactor: ${_memories.value.size} entradas / " +
         "${_memories.value.count { it.isCompacted }} compactadas\n" +
         " • Health Status: ${_consoleLogs.value.count { it.message.contains("[ERROR") } } errores registrados en consola"
 
-    suspend fun sendConsolePrompt(userMessage: String) {
+    suspend fun sendConsolePrompt(
+        userMessage: String,
+        mobileActionEngine: com.example.clawcode.engine.MobileActionEngine? = null
+    ) {
         val time = horaLocal()
         val trimmed = userMessage.trim()
         val lower = trimmed.lowercase()
@@ -1460,23 +1464,42 @@ class ClawEngine(
             // Intent Commands
             lower.startsWith("/intent open") -> {
                 val appTarget = trimmed.removePrefix("/intent open").trim()
-                if (appTarget.isNotBlank()) {
-                    "[MOBILE INTENT EXECUTED]\n" +
-                    " • Intent: android.intent.action.MAIN\n" +
-                    " • App Target: '$appTarget'\n" +
-                    " • Result: Dispatched to Android OS Application Launcher"
-                } else {
-                    "[MOBILE INTENT] Uso: /intent open <nombre_app> (Ej: /intent open gmail)"
+                when {
+                    appTarget.isBlank() ->
+                        "[MOBILE INTENT] Uso: /intent open <nombre_app> (Ej: /intent open gmail)"
+                    mobileActionEngine == null ->
+                        "[MOBILE INTENT NO EJECUTADO] Esta ruta de la consola no recibió el motor de " +
+                            "acciones del sistema, así que no se lanzó ninguna app."
+                    else -> {
+                        val (abrio, detalle) = mobileActionEngine.launchAppByName(appTarget)
+                        "[MOBILE INTENT ${if (abrio) "EJECUTADO" else "NO EJECUTADO"}]\n" +
+                            " • Objetivo: '$appTarget'\n" +
+                            " • Resultado: $detalle"
+                    }
                 }
             }
             lower.startsWith("/intent flash") -> {
-                val mode = if (lower.contains("off")) "Desactivada" else "Activada"
-                "[MOBILE INTENT] Linterna de Cámara $mode correctamente vía Camera2 API."
+                val encender = !lower.contains("off")
+                if (mobileActionEngine == null) {
+                    "[MOBILE INTENT NO EJECUTADO] Sin motor de acciones en esta ruta: la linterna no cambió."
+                } else {
+                    val (ok, detalle) = mobileActionEngine.executeActionIntent(
+                        "toggle_flashlight",
+                        mapOf("state" to if (encender) "on" else "off")
+                    )
+                    "[MOBILE INTENT ${if (ok) "EJECUTADO" else "FALLO"}]\n • Linterna: $detalle"
+                }
             }
-            lower.startsWith("/intent") ->
-                "[MOBILE INTENTS LIST]\n" +
-                " • Categorías dispuestas: 10 (Gmail, WhatsApp, Calendario, Contactos, Mapas, Ajustes, Cámara, etc.)\n" +
-                " • Sintaxis recomendada: /intent open <app> | /intent flash on | /intent map <sitio>"
+            lower.startsWith("/intent") -> {
+                val catalogo = mobileActionEngine?.getActionCatalog()
+                "[MOBILE INTENTS]\n" +
+                    (if (catalogo == null)
+                        " • Sin motor de acciones en esta ruta: no se puede listar lo que el sistema admite.\n"
+                    else
+                        " • Acciones declaradas en el catálogo: ${catalogo.size}\n" +
+                        " • Cada una ejecuta un Intent del sistema solo si el teléfono lo resuelve; si no, se informa como fallo.\n") +
+                    " • Sintaxis: /intent open <app> | /intent flash on|off"
+            }
 
             // Agent Commands
             lower.startsWith("/agent model") ->
@@ -1502,11 +1525,11 @@ class ClawEngine(
 
             // Diagnostic Commands & Error Simulation
             lower.contains("test_error") || lower.contains("fail") || lower.contains("fallo") || lower.startsWith("/diag error") ->
-                "[DIAGNOSTIC ERROR REPORT - SIMULATED FAIL]\n" +
-                " -> Exception: java.lang.ActivityNotFoundException: No Activity found to handle Intent { act=android.intent.action.VIEW dat=invalid://schema }\n" +
-                " -> Subsystem: com.example.clawcode.engine.MobileActionEngine.executeActionIntent(MobileActionEngine.kt:412)\n" +
-                " -> Diagnosis: Package name unresolved in current Android sandbox profile.\n" +
-                " -> Recovery Protocol: Safe Mode Fallback engaged. Route preserved without system crash."
+                "[REPORTE DE ERROR SINTETICO] Esto no es un fallo real de la app.\n" +
+                " -> Lo escribió el comando /diag error para comprobar cómo pinta la consola un error.\n" +
+                " -> No se lanzó ninguna ActivityNotFoundException al ejecutar este comando, y no existe " +
+                "ningún 'Safe Mode Fallback' que se active.\n" +
+                " -> Para un diagnóstico medido usa /diag, que sondea el runtime y reporta la latencia real."
 
             lower.startsWith("/diag") -> runRuntimeDiagnosticSuite()
 
@@ -1515,10 +1538,11 @@ class ClawEngine(
             lower.contains("help") || lower.contains("ayuda") ->
                 "COMANDOS DISPONIBLES EN LA CONSOLA:\n" +
                 " • /sys status | /sys memory | /sys clear\n" +
-                " • /intent open <app> | /intent flash | /intent list\n" +
+                " • /intent open <app> | /intent flash on|off  (lanzan una accion real del sistema)\n" +
                 " • /agent model | /agent tasks\n" +
                 " • /bridge status | /bridge test\n" +
-                " • /diag run | /diag error (Simulador de fallos)"
+                " • /diag  (sondeo medido del runtime) | /diag error (texto sintetico, no es un fallo real)\n" +
+                "Nota: no existe /intent list ni /tasks; lo que se ejecuta es lo que aparece arriba."
 
             else ->
                 "Comando registrado: '$trimmed'. No coincide con ningún comando de consola: se guardó " +
@@ -1567,7 +1591,8 @@ class ClawEngine(
 
         _stats.update {
             it.copy(
-                activeAgents = if (activeCount > 0) activeCount + 2 else 2,
+                // Antes sumaba 2 agentes inventados sobre los reales.
+                activeAgents = activeCount,
                 totalTasks = currentTasks.size,
                 completedTasks = completedCount,
                 totalMemoryTokens = totalTokens
@@ -1575,46 +1600,26 @@ class ClawEngine(
         }
     }
 
-    private fun initialTasks() = listOf(
-        AgentTask(
-            id = "task-101",
-            title = "Ollama Qwen 3.5 Model Listener",
-            description = "Listening on http://10.0.2.2:11434 for function calling prompts from WhatsApp OpenClaw.",
-            agentName = "Qwen3.5_OllamaBridge",
-            status = TaskStatus.RUNNING,
-            priority = Priority.HIGH,
-            progress = 0.85f,
-            createdAt = "15:40:12",
-            logs = listOf("[INIT] Ollama socket opened", "[MODEL] Loaded qwen3.5:custom-claw", "[LISTENING] Active on OpenClaw Webhook")
-        ),
-        AgentTask(
-            id = "task-102",
-            title = "Mobile Actions Intent Dispatcher",
-            description = "Handles FunctionGemma / Qwen JSON function calls for Gmail, Notion, Calendar & System Settings.",
-            agentName = "MobileActionDispatcher",
-            status = TaskStatus.COMPLETED,
-            priority = Priority.MEDIUM,
-            progress = 1.0f,
-            createdAt = "15:22:04",
-            logs = listOf("[INIT] Mobile Actions registered", "[TEST] Gmail & Notion deep links verified", "[READY] Intent launcher armed")
-        )
-    )
+    // Las dos tareas de arranque eran teatro: un "Model Listener" RUNNING al 85% con un socket que
+    // nadie abre y un "deep links verified" que nadie verificó, con marcas de hora fijas. La cola
+    // empieza vacía y se llena con tareas reales.
+    private fun initialTasks() = emptyList<AgentTask>()
 
-    private fun initialMemories() = listOf(
-        MemoryItem("mem-1", "ollama_model_target", "Core", "qwen3.5:custom-claw running on local host", 140, true, "15:30"),
-        MemoryItem("mem-2", "openclaw_whatsapp_webhook", "Context", "https://api.openclaw.io/v1/whatsapp/webhook", 95, true, "15:15"),
-        MemoryItem("mem-3", "mobile_actions_list", "Skill", "Gmail Compose, Notion Deep-link, Calendar Event, WhatsApp Direct, Map Search", 280, false, "15:45")
-    )
+    // Tres recuerdos de muestra con conteos de tokens inventados (140/95/280) que se sumaban en
+    // pantalla como "tokens de contexto total". La bóveda empieza vacía.
+    private fun initialMemories() = emptyList<MemoryItem>()
 
     private fun initialTools() = listOf(
-        McpTool("tool-1", "Mobile_Action_Dispatcher", "Launches native Android Intents for Gmail, Notion, Calendar, Maps.", "MobileActions", true, 189, 4),
+        McpTool("tool-1", "Mobile_Action_Dispatcher", "Lanza Intents nativos de Android cuando el sistema los resuelve.", "MobileActions", true, 0, 0),
         McpTool("tool-2", "OpenClaw_WhatsApp_Bridge", "[NO CONECTADO] Ningún webhook de WhatsApp entra en esta build: la demo local no abre conexiones.", "Messaging", false, 312, 11),
-        McpTool("tool-3", "Ollama_Qwen3_5_Connector", "Connects to local/remote Ollama REST API endpoints.", "AI Models", true, 94, 18),
+        McpTool("tool-3", "Ollama_Qwen3_5_Connector", "Cliente HTTP real contra los endpoints REST de Ollama.", "AI Models", true, 0, 0),
         McpTool("tool-4", "FunctionGemma_LiteRT_Fallback", "[NO DISPONIBLE] Ejecutar'a FunctionGemma 270M dentro del teléfono: esta build no carga ningún modelo en el proceso.", "LiteRT", false, 42, 6),
-        McpTool("tool-5", "GitHub_MCP_Bridge", "Integración con repositorios, PRs, issues y ramas en GitHub.", "Integrations", true, 128, 8),
-        McpTool("tool-6", "Notion_MCP_Connector", "Sincronización de páginas, bases de datos y notas en Notion.", "Integrations", true, 210, 12),
-        McpTool("tool-7", "Gmail_MCP_Agent", "Búsqueda, lectura y redacción automática de correos en Gmail.", "Integrations", true, 345, 9),
-        McpTool("tool-8", "Google_Drive_MCP_Storage", "Búsqueda y descarga de documentos y archivos en Google Drive.", "Integrations", true, 178, 15),
+        // callCount y latencyMs estaban sembrados con cifras de central de llamadas (128/8, 210/12,
+        // 345/9, 178/15) que nadie alimentaba nunca. Cero significa "sin datos", que es la verdad.
+        McpTool("tool-5", "GitHub_MCP_Bridge", "[SIN CREDENCIAL] Ninguna llamada a la API de GitHub sale de esta app: no hay PRs, issues ni ramas.", "Integrations", false, 0, 0),
+        McpTool("tool-6", "Notion_MCP_Connector", "[SIN CREDENCIAL] El token de Notion es un placeholder; no se sincroniza ninguna página.", "Integrations", false, 0, 0),
+        McpTool("tool-7", "Gmail_MCP_Agent", "[SIN IMPLEMENTAR] No hay cliente de Gmail en el repo: solo se abre la app de correo con un Intent.", "Integrations", false, 0, 0),
+        McpTool("tool-8", "Google_Drive_MCP_Storage", "[SIN IMPLEMENTAR] No hay cliente de Drive en el repo.", "Integrations", false, 0, 0),
         McpTool("tool-9", "Google_AI_Edge_Gallery_Bridge", "[NO DISPONIBLE] Puente con Google AI Edge Gallery: no hay runtime en el dispositivo que ejecuta Gemini Nano/Gemma.", "AI Edge", false, 560, 5)
     )
 
@@ -1623,7 +1628,7 @@ class ClawEngine(
         ConsoleLog(
             "2", "15:00:02", "ClawAgent",
             "[STATUS] Motor de chat: inferencia REAL por HTTP contra ${_ollamaConfig.value.hostUrl} " +
-                    "(modelo '${_ollamaConfig.value.modelName}'). Dispatcher de intents del sistema activo. " +
+                    "(modelo '${_ollamaConfig.value.modelName}'). " +
                     "No hay NPU/LiteRT embebido en esta build."
         ),
         ConsoleLog(
@@ -1636,7 +1641,8 @@ class ClawEngine(
             "[INFO] Ninguna inferencia ejecutada todavía. El primer turno sondeará el runtime y, si no " +
                     "responde, lo avisará en el chat en vez de simular una respuesta."
         ),
-        ConsoleLog("5", "15:08:12", "ToolExecutor", "[ERROR 404] Intent Exception in 'open_unknown_package': ActivityNotFoundException (Resolved via Safe Fallback)")
+        // Este "[ERROR 404] ... Resolved via Safe Fallback" era un fallo inventado que aparecía en
+        // la consola en cada arranque y contaba como FALLO en el recuento de UnifiedConsole.
     )
 
     // Sin conversaciones inventadas: el puente de WhatsApp no recibe nada en esta build, así que
@@ -1644,11 +1650,9 @@ class ClawEngine(
     // falsas ("Evento de calendario preparado en Google Calendar").
     private fun initialWhatsAppMessages() = emptyList<WhatsAppMessage>()
 
-    private fun initialFileAttachments() = listOf(
-        FileAttachmentItem("f-1", "qwen3.5_modfile.Modfile", "Modfile", 12, "Modfile con System Prompt de JARVIS y esquemas de Mobile Actions"),
-        FileAttachmentItem("f-2", "mobile_actions_dataset.json", "JSON", 240, "Dataset de entrenamiento para llamadas a funciones en Android"),
-        FileAttachmentItem("f-3", "camera_screen_snapshot.png", "Image", 1024, "Captura de visión OCR analizada por JARVIS")
-    )
+    // Ninguno de esos tres ficheros existe ni se ha leído nunca; tamaños y resúmenes estaban
+    // escritos a mano. La lista empieza vacía y sólo crece con ficheros reales.
+    private fun initialFileAttachments() = emptyList<FileAttachmentItem>()
 
     private fun initialChatMessages() = listOf(
         ChatMessage(

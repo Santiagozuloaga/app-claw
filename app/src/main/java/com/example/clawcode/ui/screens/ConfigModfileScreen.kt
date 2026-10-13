@@ -124,9 +124,11 @@ fun ConfigModfileScreen(viewModel: ClawViewModel) {
         ),
         SettingPage(
             id = "mem_security",
-            title = "Seguridad y Telemetría",
+            title = "Preferencias del Runtime y Seguridad",
             category = "Memory Management",
-            tags = listOf("seguridad", "biométrico", "telemetría", "limpieza", "hz"),
+            // Tags de controles que ya no existen (biométrico, limpieza, Hz) retirados: buscaban
+            // funciones que la app no implementa.
+            tags = listOf("seguridad", "runtime", "local", "preferencia"),
             content = { SecurityTelemetrySettings(it) }
         )
     )
@@ -429,9 +431,6 @@ fun AgentPersonalitySettings(viewModel: ClawViewModel) {
 @Composable
 fun SecurityTelemetrySettings(viewModel: ClawViewModel) {
     val ollamaConfig by viewModel.ollamaConfig.collectAsState()
-    var biometricLock by remember { mutableStateOf(false) }
-    var memoryCleanup by remember { mutableStateOf(true) }
-    var telemetryHz by remember { mutableStateOf(5f) }
 
     Column(
         modifier = Modifier
@@ -445,17 +444,16 @@ fun SecurityTelemetrySettings(viewModel: ClawViewModel) {
             ConfigSwitchRow("Preferencia: procesar en el dispositivo (aún sin runtime local)", ollamaConfig.useOnDeviceLiteRTFallback) { 
                 viewModel.updateOllamaConfig(ollamaConfig.hostUrl, ollamaConfig.modelName, ollamaConfig.openClawWebhookUrl, it)
             }
-            ConfigSwitchRow("Bloqueo Biométrico", biometricLock) { biometricLock = it }
-            ConfigSwitchRow("Limpieza de Memoria", memoryCleanup) { memoryCleanup = it }
-        }
-        
-        ConfigSection("TELEMETRÍA") {
-            Text("Frecuencia de actualización (${telemetryHz.toInt()} Hz)", color = TextPrimary, fontSize = 14.sp)
-            Slider(
-                value = telemetryHz,
-                onValueChange = { telemetryHz = it },
-                valueRange = 1f..60f,
-                colors = SliderDefaults.colors(thumbColor = NeonTeal, activeTrackColor = NeonTeal)
+            // Se retiran "Bloqueo Biométrico", "Limpieza de Memoria" y el slider de "Frecuencia de
+            // actualización (N Hz)": guardaban un estado local que jamás se leía y se perdía al salir
+            // de la pantalla, mientras anunciaban capacidades que la app no tiene.
+            Text(
+                text = "Sin más controles implementados: no hay bloqueo biométrico, ni limpieza automática " +
+                        "de memoria, ni frecuencia de telemetría ajustable. El sondeo de hardware corre fijo " +
+                        "cada 5 s en ClawViewModel y no depende de ninguna preferencia.",
+                color = TextMuted,
+                fontSize = 11.sp,
+                lineHeight = 15.sp
             )
         }
     }
@@ -521,7 +519,9 @@ fun DynamicThemeConfigSection(viewModel: ClawViewModel) {
     val hardwareTelemetry by viewModel.hardwareTelemetry.collectAsState()
     val palette = LocalDynamicThemePalette.current
 
-    ConfigSection("MOTOR DINÁMICO DE TEMAS (3-FASE)") {
+    // "3-FASE" vendía tres fases medidas: getDynamicThemePalette conserva los colores de identidad
+    // cuando el modo automático está ON y lo único que los altera es batteryTemperatureC.
+    ConfigSection("MOTOR DINÁMICO DE TEMAS (ETIQUETAS + TEMPERATURA DE BATERÍA)") {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -538,7 +538,9 @@ fun DynamicThemeConfigSection(viewModel: ClawViewModel) {
         Spacer(modifier = Modifier.height(12.dp))
         
         if (jarvisModfile.useAutoDynamicTheme) {
-            Text("Modo Automático: La app adapta los colores según las tareas, personalidad y procesador.", color = TextSecondary, fontSize = 11.sp, lineHeight = 15.sp)
+            // "según las tareas, personalidad y procesador" no era verificable: ningún acelerador se
+            // consulta, y con el modo automático getDynamicThemePalette fija los colores de identidad.
+            Text("Modo Automático: la paleta de identidad es fija; sólo la temperatura de batería medida altera los colores. Personalidad y Tarea se guardan en el modfile (JarvisModfile.personality / currentTaskMode) y se muestran como etiqueta.", color = TextSecondary, fontSize = 11.sp, lineHeight = 15.sp)
             Spacer(modifier = Modifier.height(8.dp))
             
             Text("1. Personalidad", color = palette.primary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -571,12 +573,27 @@ fun DynamicThemeConfigSection(viewModel: ClawViewModel) {
             }
             
             Spacer(modifier = Modifier.height(8.dp))
-            Text("3. Estado Térmico (${"%.1f".format(hardwareTelemetry.batteryTemperatureC)}°C)", color = if (hardwareTelemetry.batteryTemperatureC >= 42f) RedError else palette.primary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Button(onClick = { viewModel.setSimulatedTemperature(32.0f) }, colors = ButtonDefaults.buttonColors(containerColor = DarkBackground), border = BorderStroke(1.dp, NeonEmerald), shape = RoundedCornerShape(8.dp)) { Text("Óptimo (32°C)", fontSize = 10.sp, color = NeonEmerald) }
-                Button(onClick = { viewModel.setSimulatedTemperature(38.0f) }, colors = ButtonDefaults.buttonColors(containerColor = DarkBackground), border = BorderStroke(1.dp, NeonAmber), shape = RoundedCornerShape(8.dp)) { Text("Tibio (38°C)", fontSize = 10.sp, color = NeonAmber) }
-                Button(onClick = { viewModel.setSimulatedTemperature(44.0f) }, colors = ButtonDefaults.buttonColors(containerColor = DarkBackground), border = BorderStroke(1.dp, RedError), shape = RoundedCornerShape(8.dp)) { Text("Alerta (44°C)", fontSize = 10.sp, color = RedError) }
+            // -1f es el centinela de "sin medir" en HardwareTelemetry.batteryTemperatureC; el valor real
+            // llega de BatteryManager.EXTRA_TEMPERATURE vía SystemMonitor. Se retiran los botones
+            // "Óptimo (32°C) / Tibio (38°C) / Alerta (44°C)": escribían en ese mismo campo y /sys lo
+            // imprimía después como si fuera una lectura del teléfono.
+            val temperaturaTexto = if (hardwareTelemetry.batteryTemperatureC >= 0f) {
+                "3. Temperatura de batería: ${"%.1f".format(hardwareTelemetry.batteryTemperatureC)}°C (medida por BatteryManager)"
+            } else {
+                "3. Temperatura de batería: sin medir (BatteryManager no ha reportado todavía)"
             }
+            Text(
+                temperaturaTexto,
+                color = if (hardwareTelemetry.batteryTemperatureC >= 42f) RedError else palette.primary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                "No hay forma de fijar la temperatura desde la app: sería un valor inventado.",
+                color = TextMuted,
+                fontSize = 10.sp,
+                modifier = Modifier.padding(top = 4.dp)
+            )
         } else {
             Text("Modo Personalizado: Selecciona un color base.", color = TextSecondary, fontSize = 11.sp, lineHeight = 15.sp)
             Spacer(modifier = Modifier.height(8.dp))

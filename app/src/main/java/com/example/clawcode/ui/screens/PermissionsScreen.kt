@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -68,24 +69,37 @@ fun PermissionsScreen() {
         refreshTrigger++
     }
 
-    fun isPermissionGranted(key: String, isSpecial: Boolean): Boolean {
+    // Estado real de un permiso. `null` significa que NO es medible en esta API: la pantalla lo
+    // reporta como "NO APLICA" en vez de concederlo por decreto (antes MANAGE_EXTERNAL_STORAGE
+    // devolvía `true` en API < 30 e IGNORE_BATTERY_OPTIMIZATIONS devolvía `true` siempre).
+    fun permissionState(key: String, isSpecial: Boolean): Boolean? {
         if (isSpecial) {
             return when (key) {
-                "MANAGE_EXTERNAL_STORAGE" -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) Environment.isExternalStorageManager() else true
+                // Sólo existe desde API 30 (R); antes no se puede conceder ni comprobar.
+                "MANAGE_EXTERNAL_STORAGE" ->
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) Environment.isExternalStorageManager() else null
                 "SYSTEM_ALERT_WINDOW" -> Settings.canDrawOverlays(context)
                 "WRITE_SETTINGS" -> Settings.System.canWrite(context)
-                "IGNORE_BATTERY_OPTIMIZATIONS" -> true
+                // Pregunta real al PowerManager: ¿está el paquete exento de la optimización?
+                "IGNORE_BATTERY_OPTIMIZATIONS" -> {
+                    val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+                    powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
+                }
                 else -> false
             }
         }
         return ContextCompat.checkSelfPermission(context, key) == PackageManager.PERMISSION_GRANTED
     }
 
-    val grantedCount = remember(refreshTrigger) {
-        runtimePermissions.count { isPermissionGranted(it.permissionKey, false) } +
-                specialPermissions.count { isPermissionGranted(it.permissionKey, true) }
+    // Se mide una sola vez por refresco; los `null` (no aplicables) quedan fuera del numerador y
+    // del denominador para que el contador no se infle con valores afirmados.
+    val estadosPermisos = remember(refreshTrigger) {
+        runtimePermissions.map { permissionState(it.permissionKey, false) } +
+                specialPermissions.map { permissionState(it.permissionKey, true) }
     }
-    val totalCount = runtimePermissions.size + specialPermissions.size
+    val grantedCount = estadosPermisos.count { it == true }
+    val totalCount = estadosPermisos.count { it != null }
+    val noAplicables = estadosPermisos.count { it == null }
 
     Column(
         modifier = Modifier
@@ -108,7 +122,7 @@ fun PermissionsScreen() {
                     letterSpacing = 1.sp
                 )
                 Text(
-                    text = "Control total sobre las capacidades del agente autónomo",
+                    text = "Permisos leídos del sistema; las integraciones de nube no están autorizadas",
                     color = TextMuted,
                     fontSize = 12.sp
                 )
@@ -120,7 +134,9 @@ fun PermissionsScreen() {
                 border = androidx.compose.foundation.BorderStroke(1.dp, NeonEmerald)
             ) {
                 Text(
-                    text = "$grantedCount / $totalCount ACTIVOS",
+                    // "verificados por el sistema" = sólo los que devolvieron true/false real.
+                    text = "$grantedCount / $totalCount CONCEDIDOS" +
+                            (if (noAplicables > 0) " · $noAplicables NO APLICA" else ""),
                     color = NeonEmerald,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
@@ -157,7 +173,7 @@ fun PermissionsScreen() {
             }
 
             items(runtimePermissions) { perm ->
-                val granted = isPermissionGranted(perm.permissionKey, false)
+                val granted = permissionState(perm.permissionKey, false)
                 PermissionCard(
                     item = perm,
                     isGranted = granted,
@@ -173,7 +189,7 @@ fun PermissionsScreen() {
             }
 
             items(specialPermissions) { perm ->
-                val granted = isPermissionGranted(perm.permissionKey, true)
+                val granted = permissionState(perm.permissionKey, true)
                 PermissionCard(
                     item = perm,
                     isGranted = granted,
@@ -185,13 +201,14 @@ fun PermissionsScreen() {
 
             item {
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("INTEGRACIONES DE NUBE Y NAVEGACIÓN (OAUTH2 / APIS)", color = NeonPurple, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Text("INTEGRACIONES DE NUBE (SIN OAUTH2 NI CREDENCIALES REALES EN ESTA BUILD)", color = NeonPurple, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             }
 
             item {
                 CloudIntegrationCard(
                     title = "Notion API & Workspaces",
-                    description = "Acceso a bases de datos, notas, páginas y listas de tareas de Notion mediante token seguro u OAuth2.",
+                    description = "Nada autorizado: no hay OAuth2 ni token propio. AppConnectorManager.notionCrearPagina " +
+                            "existe pero no se llama desde ninguna ruta y usaría el placeholder 'secret_tu_token_aqui'.",
                     icon = Icons.Default.Description,
                     serviceName = "Notion"
                 )
@@ -200,7 +217,8 @@ fun PermissionsScreen() {
             item {
                 CloudIntegrationCard(
                     title = "Google Workspace (Gmail & Drive)",
-                    description = "Búsqueda y lectura de correos en Gmail, gestión de archivos en Google Drive y actualización de hojas de cálculo.",
+                    description = "Sin implementación: esta build no lee correos, ni archivos de Drive, ni escribe hojas de " +
+                            "cálculo, y no hay ningún flujo de autorización de Google.",
                     icon = Icons.Default.Email,
                     serviceName = "Google"
                 )
@@ -209,7 +227,8 @@ fun PermissionsScreen() {
             item {
                 CloudIntegrationCard(
                     title = "GitHub API & Repositorios",
-                    description = "Clonación de repositorios, creación de issues y solicitudes de extracción (Pull Requests).",
+                    description = "Nada autorizado: githubVerRepositorios haría un GET con el placeholder 'ghp_tu_token_aqui' " +
+                            "y no se invoca desde ninguna ruta. No se crean issues ni Pull Requests.",
                     icon = Icons.Default.Code,
                     serviceName = "GitHub"
                 )
@@ -219,11 +238,13 @@ fun PermissionsScreen() {
 }
 
 @Composable
-fun PermissionCard(item: PermissionItem, isGranted: Boolean, onRequest: () -> Unit) {
+fun PermissionCard(item: PermissionItem, isGranted: Boolean?, onRequest: () -> Unit) {
+    // `isGranted == null` = el permiso no existe o no es medible en esta API de Android.
+    val concedido = isGranted == true
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, if (isGranted) NeonEmerald.copy(alpha = 0.4f) else DarkBorder, RoundedCornerShape(14.dp)),
+            .border(1.dp, if (concedido) NeonEmerald.copy(alpha = 0.4f) else DarkBorder, RoundedCornerShape(14.dp)),
         colors = CardDefaults.cardColors(containerColor = DarkSurface)
     ) {
         Row(
@@ -235,13 +256,13 @@ fun PermissionCard(item: PermissionItem, isGranted: Boolean, onRequest: () -> Un
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .background(if (isGranted) NeonEmerald.copy(alpha = 0.15f) else DarkSurfaceVariant, RoundedCornerShape(10.dp)),
+                    .background(if (concedido) NeonEmerald.copy(alpha = 0.15f) else DarkSurfaceVariant, RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = item.icon,
                     contentDescription = null,
-                    tint = if (isGranted) NeonEmerald else TextMuted
+                    tint = if (concedido) NeonEmerald else TextMuted
                 )
             }
 
@@ -264,18 +285,23 @@ fun PermissionCard(item: PermissionItem, isGranted: Boolean, onRequest: () -> Un
             TextButton(
                 onClick = onRequest,
                 colors = ButtonDefaults.textButtonColors(
-                    contentColor = if (isGranted) NeonEmerald else RedError
+                    contentColor = if (concedido) NeonEmerald else RedError
                 )
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = if (isGranted) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                        imageVector = if (concedido) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = if (isGranted) "ACTIVO" else "ACTIVAR",
+                        // "NO APLICA" se usa cuando el sistema no puede devolver un estado real.
+                        text = when (isGranted) {
+                            true -> "ACTIVO"
+                            false -> "ACTIVAR"
+                            null -> "NO APLICA"
+                        },
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -305,12 +331,16 @@ fun openSpecialSettings(context: Context, key: String) {
 
 @Composable
 fun CloudIntegrationCard(title: String, description: String, icon: ImageVector, serviceName: String) {
-    var isConnected by remember { mutableStateOf(true) }
+    // Estado REAL: en esta build no existe ningún OAuth2 ni credencial propia, así que ninguna
+    // integración está autorizada. El helper `esCredencialReal` de AppConnectorManager es `private`
+    // (y sus tokens también), así que no se puede consultar desde aquí: se queda en `false` y el
+    // botón ya no puede voltear el rótulo a "AUTORIZADO" con un clic, como hacía antes.
+    val autorizada = false
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, if (isConnected) NeonPurple.copy(alpha = 0.5f) else DarkBorder, RoundedCornerShape(14.dp)),
+            .border(1.dp, if (autorizada) NeonPurple.copy(alpha = 0.5f) else DarkBorder, RoundedCornerShape(14.dp)),
         colors = CardDefaults.cardColors(containerColor = DarkSurface)
     ) {
         Row(
@@ -338,7 +368,7 @@ fun CloudIntegrationCard(title: String, description: String, icon: ImageVector, 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(title, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("[OAUTH2]", color = NeonTeal, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    Text("[SIN OAUTH2]", color = NeonAmber, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                 }
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(description, color = TextSecondary, fontSize = 11.sp, lineHeight = 15.sp)
@@ -346,22 +376,27 @@ fun CloudIntegrationCard(title: String, description: String, icon: ImageVector, 
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            TextButton(
-                onClick = { isConnected = !isConnected },
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = if (isConnected) NeonEmerald else NeonPurple
-                )
+            // Etiqueta de estado (inmutable): sólo dice lo que se sabe, no ofrece autorizar.
+            Surface(
+                color = DarkSurfaceVariant,
+                shape = RoundedCornerShape(8.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, NeonAmber.copy(alpha = 0.5f))
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Icon(
-                        imageVector = if (isConnected) Icons.Default.VpnKey else Icons.Default.Add,
+                        imageVector = Icons.Default.Block,
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(14.dp),
+                        tint = NeonAmber
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = if (isConnected) "AUTORIZADO" else "CONECTAR",
-                        fontSize = 11.sp,
+                        text = if (autorizada) "AUTORIZADO" else "SIN AUTORIZAR",
+                        color = NeonAmber,
+                        fontSize = 10.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }

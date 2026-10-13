@@ -177,9 +177,28 @@ fun UnifiedConsoleScreen(viewModel: ClawViewModel) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                TelemetryMiniChip("BATERÍA", "${hardware.batteryLevelPercent}%", if (hardware.batteryLevelPercent > 20) NeonEmerald else RedError, Modifier.weight(1f))
-                TelemetryMiniChip("RAM", "${"%.1f".format(hardware.ramUsedGb)} GB", NeonAmber, Modifier.weight(1f))
-                TelemetryMiniChip("NPU / GPU", "100% por runtime HTTP, no dentro del teléfono", NeonTeal, Modifier.weight(1.2f))
+                // batteryLevelPercent = -1 y ramUsedGb = 0f son los centinelas de "sin medir" en
+                // HardwareTelemetry: imprimir "-1%" o "0.0 GB" los presentaba como lecturas obtenidas.
+                TelemetryMiniChip(
+                    "BATERÍA",
+                    if (hardware.batteryLevelPercent in 0..100) "${hardware.batteryLevelPercent}%" else "sin medir",
+                    when {
+                        hardware.batteryLevelPercent < 0 -> TextMuted
+                        hardware.batteryLevelPercent > 20 -> NeonEmerald
+                        else -> RedError
+                    },
+                    Modifier.weight(1f)
+                )
+                TelemetryMiniChip(
+                    "RAM",
+                    // ramTotalGb sólo es > 0 cuando ActivityManager.MemoryInfo respondió.
+                    if (hardware.ramTotalGb > 0f) "${"%.1f".format(hardware.ramUsedGb)} GB" else "sin medir",
+                    NeonAmber,
+                    Modifier.weight(1f)
+                )
+                // El "100%" no era una medición: ningún acelerador se consulta ni se usa aquí.
+                // El valor real del campo vive en HardwareTelemetry.npuGpuAccelerator.
+                TelemetryMiniChip("NPU / GPU", hardware.npuGpuAccelerator, NeonTeal, Modifier.weight(1.2f))
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -340,7 +359,9 @@ fun UnifiedConsoleScreen(viewModel: ClawViewModel) {
                 "/sys memory" to "Ver estado del buffer de memoria",
                 "/intent open gmail" to "Lanzar app de correo Gmail",
                 "/intent flash on" to "Encender linterna de cámara",
-                "/agent model" to "Inspeccionar modelo LiteRT Qwen 3.5",
+                // LiteRT no existe en esta build: /agent model imprime el modelo HTTP configurado
+                // (OllamaConfig.modelName) y su host.
+                "/agent model" to "Ver el modelo HTTP configurado (Ollama host + nombre)",
                 "/agent tasks" to "Ver cola de tareas del agente",
                 "/bridge test" to "Simular webhook entrante de WhatsApp",
                 "/diag error" to "Simular fallo de Intent (Probador)",

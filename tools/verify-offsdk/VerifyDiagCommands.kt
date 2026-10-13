@@ -29,6 +29,10 @@ private fun lastReply(engine: ClawEngine, prefix: String) =
 private fun prompt(engine: ClawEngine, text: String) =
     runBlocking { engine.sendConsolePrompt(text) }
 
+/** Con motor de acciones: es la ruta que la UI usa desde esta ronda. */
+private fun promptCon(engine: ClawEngine, text: String) =
+    runBlocking { engine.sendConsolePrompt(text, MobileActionEngine(Context())) }
+
 private fun engineAt(host: String): ClawEngine {
     val e = ClawEngine(configStore = InMemoryOllamaConfigStore())
     e.updateOllamaConfig(host, "qwen2.5:0.5b", WEBHOOK, false)
@@ -102,14 +106,39 @@ fun main() {
     println("=== DC-4: la funcionalidad de la consola se conserva ===")
     val keep = engineAt("http://127.0.0.1:11434")
     prompt(keep, "/diag error")
-    check("/diag error sigue dando el informe de fallo simulado",
-        lastReply(keep, "[DIAGNOSTIC ERROR REPORT").contains("SIMULATED FAIL"), "rama intacta")
+    val sintetico = lastReply(keep, "[REPORTE DE ERROR SINTETICO")
+    check("/diag error se declara texto sintetico y no finge una excepcion",
+        sintetico.contains("no es un fallo real") && !sintetico.contains("Recovery Protocol"),
+        "longitud=${sintetico.length}")
+    promptCon(keep, "/intent open gmail")
+    val abierto = lastReply(keep, "[MOBILE INTENT")
+    check("/intent open lanza de verdad cuando hay motor de acciones",
+        abierto.startsWith("[MOBILE INTENT EJECUTADO]") && abierto.contains("stub lanzada: gmail"),
+        abierto.lineSequence().last().trim())
+    prompt(keep, "/intent open gmail")
+    check("/intent open sin motor declara que no lanzo nada",
+        lastReply(keep, "[MOBILE INTENT NO EJECUTADO]").isNotBlank(), "rama honesta")
+    promptCon(keep, "/intent flash on")
+    check("/intent flash usa Camera2 a traves del motor, no un texto fijo",
+        lastReply(keep, "[MOBILE INTENT").let {
+            it.startsWith("[MOBILE INTENT EJECUTADO]") || it.startsWith("[MOBILE INTENT FALLO]")
+        }, "resultado del intent, no del literal")
+    promptCon(keep, "/intent")
+    val listado = lastReply(keep, "[MOBILE INTENTS]")
+    check("el conteo de acciones sale del catalogo (3 en el stub), no de un literal",
+        listado.contains("Acciones declaradas en el catálogo: 3") && !listado.contains("Categorías dispuestas: 10"),
+        "contado")
     prompt(keep, "/sys memory")
     check("/sys memory sigue respondiendo",
         lastReply(keep, "[SYSTEM MEMORY REPORT]").isNotBlank(), "rama intacta")
     prompt(keep, "help")
-    check("la lista de comandos sigue disponible",
-        lastReply(keep, "COMANDOS DISPONIBLES").contains("/diag run"), "ayuda intacta")
+    val ayuda = lastReply(keep, "COMANDOS DISPONIBLES")
+    // La propia ayuda explica que /intent list y /tasks no existen; lo que no puede hacer es
+    // anunciarlos como comandos disponibles en la lista de viñetas.
+    val vinetas = ayuda.lines().filter { it.trimStart().startsWith("•") }.joinToString(" | ")
+    check("la ayuda solo anuncia en sus viñetas comandos que tienen rama",
+        vinetas.contains("/intent open") && !vinetas.contains("/intent list") && !vinetas.contains("/tasks"),
+        "sin comandos fantasma en la lista")
     prompt(keep, "/bridge status")
     check("/bridge status conserva su propio informe (no se lo roba /sys status)",
         lastReply(keep, "[PUENTE OPENCLAW WHATSAPP]").isNotBlank(), "rama del puente intacta")
@@ -149,7 +178,9 @@ fun main() {
     check("avisa de que sin runtime no se simula la respuesta",
         seed.text.contains("en lugar de devolver una respuesta simulada"), "promesa honesta")
     val bootLogs = rebooted.consoleLogs.value
-    check("la consola conserva sus 5 líneas de arranque", bootLogs.size == 5, "logs=${bootLogs.size}")
+    check("el arranque no incluye el error inventado de la semilla antigua",
+        bootLogs.size == 4 && bootLogs.none { it.message.contains("Resolved via Safe Fallback") },
+        "logs=${bootLogs.size}")
     val boot = bootLogs.joinToString(" ") { it.message }
     check("el STATUS de arranque nombra el host configurado",
         boot.contains("http://127.0.0.1:11434"), "runtime declarado")

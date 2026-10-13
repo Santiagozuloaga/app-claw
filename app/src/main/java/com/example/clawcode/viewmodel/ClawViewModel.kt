@@ -245,10 +245,6 @@ class ClawViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun setSimulatedTemperature(tempC: Float) {
-        engine.setSimulatedTemperature(tempC)
-    }
-
     fun addFileAttachment(fileName: String, fileType: String, sizeKb: Int, summary: String) {
         engine.addFileAttachment(fileName, fileType, sizeKb, summary)
     }
@@ -318,7 +314,7 @@ class ClawViewModel(application: Application) : AndroidViewModel(application) {
 
     fun sendConsolePrompt(prompt: String) {
         viewModelScope.launch {
-            engine.sendConsolePrompt(prompt)
+            engine.sendConsolePrompt(prompt, mobileActionEngine)
         }
     }
 

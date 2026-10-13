@@ -36,9 +36,11 @@ class DiskSpaceManager(private val context: Context) {
         val cacheMb = calculateFolderSize(cacheFolder) / (1024f * 1024f)
         val internalMb = calculateFolderSize(context.filesDir) / (1024f * 1024f)
 
-        // StatFs for device storage
-        var freeGb = 16.4f
-        var totalGb = 128.0f
+        // StatFs for device storage. El fallback anterior era 16,4 / 128,0 GB "típicos de un
+        // Vivo": si StatFs lanzaba una excepción, la pantalla mostraba esas dos cifras como si
+        // hubieran sido medidas. -1 significa "sin medir" y las pantallas lo traducen así.
+        var freeGb = -1f
+        var totalGb = -1f
         try {
             val stat = StatFs(Environment.getDataDirectory().path)
             val blockSize = stat.blockSizeLong
@@ -48,7 +50,7 @@ class DiskSpaceManager(private val context: Context) {
             freeGb = (availableBlocks * blockSize) / (1024f * 1024f * 1024f)
             totalGb = (totalBlocks * blockSize) / (1024f * 1024f * 1024f)
         } catch (e: Exception) {
-            // Default fallback for Vivo V25 / standard devices
+            // Se conserva -1: sin lectura de StatFs no hay cifra que mostrar.
         }
 
         // List models
