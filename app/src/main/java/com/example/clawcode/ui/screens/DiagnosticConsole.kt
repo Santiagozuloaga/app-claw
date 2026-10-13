@@ -106,10 +106,12 @@ fun DiagnosticConsole(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    DiagnosticChip(label = "CPU", value = "${hardware.cpuUsagePercent}%")
-                    DiagnosticChip(label = "RAM", value = "${String.format("%.1f", hardware.ramUsedGb)} / ${String.format("%.1f", hardware.ramTotalGb)} GB")
-                    DiagnosticChip(label = "Velocidad", value = "${hardware.tokensPerSecond} t/s")
-                    DiagnosticChip(label = "Batería", value = "${hardware.batteryLevelPercent}% (${hardware.batteryTemperatureC}°C)")
+                    // Los centinelas (-1 de bateria sin sondear, 0 de RAM/CPU/tokens sin medida) no
+                    // son lecturas: hay que decirlo, o la consola parece un panel de telemetria.
+                    DiagnosticChip(label = "CPU", value = if (hardware.cpuTotalJiffies > 0L) "${hardware.cpuUsagePercent}%" else "sin medir")
+                    DiagnosticChip(label = "RAM", value = if (hardware.ramTotalGb > 0f) "${String.format("%.1f", hardware.ramUsedGb)} / ${String.format("%.1f", hardware.ramTotalGb)} GB" else "sin medir")
+                    DiagnosticChip(label = "Velocidad", value = if (hardware.tokensPerSecond > 0f) "${hardware.tokensPerSecond} t/s" else "sin turno medido")
+                    DiagnosticChip(label = "Batería", value = if (hardware.batteryLevelPercent in 0..100) "${hardware.batteryLevelPercent}% (${hardware.batteryTemperatureC}°C)" else "sin sondeo de BatteryManager")
                 }
             }
         }

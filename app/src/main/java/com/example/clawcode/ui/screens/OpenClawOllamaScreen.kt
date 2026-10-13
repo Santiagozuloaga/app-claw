@@ -34,7 +34,8 @@ fun OpenClawOllamaScreen(viewModel: ClawViewModel) {
     var hostUrl by remember(config) { mutableStateOf(config.hostUrl) }
     var modelName by remember(config) { mutableStateOf(config.modelName) }
     var webhookUrl by remember(config) { mutableStateOf(config.openClawWebhookUrl) }
-    var useFallback by remember(config) { mutableStateOf(config.useOnDeviceLiteRTFallback) }
+    // Sin estado local para el fallback: la preferencia OllamaConfig.useOnDeviceLiteRTFallback se
+    // lee y se reescribe tal cual, porque no hay runtime local que activar.
 
     var simSenderName by remember { mutableStateOf("David Botero") }
     var simMessageText by remember { mutableStateOf("Abre los ajustes de wifi y crea un contacto para Juan") }
@@ -59,13 +60,16 @@ fun OpenClawOllamaScreen(viewModel: ClawViewModel) {
             Spacer(modifier = Modifier.width(10.dp))
             Column {
                 Text(
-                    text = "Ollama Qwen 3.5 & OpenClaw",
+                    // El nombre del modelo y el host salen del config real (OllamaConfig, persistido
+                    // en PrefsOllamaConfigStore); el rótulo ya no fija "Qwen 3.5" ni pesos locales.
+                    text = "Ollama por HTTP · '${config.modelName}'",
                     color = TextPrimary,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Puente WhatsApp Webhook + Inferencia Híbrida LiteRT-LM",
+                    // No hay "inferencia híbrida LiteRT-LM" ni webhook abierto: se dice lo que existe.
+                    text = "Puente WhatsApp: sin conexión establecida · LiteRT-LM: no implementado",
                     color = TextSecondary,
                     fontSize = 12.sp
                 )
@@ -102,8 +106,11 @@ fun OpenClawOllamaScreen(viewModel: ClawViewModel) {
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
+                    // El webhook no entrega ni recibe payloads: simulateWhatsAppIncoming lo declara
+                    // en el propio registro ("WHATSAPP_DEMO_LOCAL"). Eso es lo que se dice aquí.
                     text = "• Modelos Locales en el teléfono: NO disponibles en esta build (ninguna ruta carga pesos en el proceso); cada turno va al runtime HTTP configurado.\n" +
-                           "• Modelos Remotos (Ollama Qwen 3.5 7B/14B): Procesan razonamiento complejo a través de OpenClaw WhatsApp Webhook.",
+                           "• Modelo remoto: el que esté en 'modelName' contesta por HTTP desde este teléfono (OllamaClient). " +
+                           "El webhook de OpenClaw no tiene ninguna conexión abierta: ni entra WhatsApp real ni sale mensaje alguno.",
                     color = TextSecondary,
                     fontSize = 11.sp,
                     lineHeight = 16.sp
@@ -219,29 +226,35 @@ fun OpenClawOllamaScreen(viewModel: ClawViewModel) {
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Fallback a LiteRT-LM: NO disponible en esta build",
-                        color = TextPrimary,
-                        fontSize = 12.sp
-                    )
-                    Switch(
-                        checked = useFallback,
-                        onCheckedChange = { useFallback = it },
-                        colors = SwitchDefaults.colors(checkedThumbColor = NeonEmerald)
-                    )
-                }
+                // Se retira el Switch de "Fallback a LiteRT-LM": guardaba una preferencia que la
+                // propia pantalla etiqueta como sin runtime. El valor real (OllamaConfig) se muestra
+                // y se conserva intacto al guardar; quien quiera marcarlo sigue pudiendo hacerlo en
+                // Ajustes > "Preferencias del Runtime y Seguridad".
+                Text(
+                    text = "Fallback a LiteRT-LM: no implementado (ninguna ruta carga pesos en el proceso). " +
+                            "Preferencia guardada ahora: " +
+                            if (config.useOnDeviceLiteRTFallback) "ON, sin runtime detrás." else "OFF.",
+                    color = TextSecondary,
+                    fontSize = 12.sp
+                )
 
                 Spacer(modifier = Modifier.height(10.dp))
 
                 Button(
                     onClick = {
-                        viewModel.updateOllamaConfig(hostUrl, modelName, webhookUrl, useFallback)
-                        Toast.makeText(context, "Configuración actualizada con éxito", Toast.LENGTH_SHORT).show()
+                        // updateOllamaConfig sí persiste (PrefsOllamaConfigStore); lo que no hace es
+                        // probar la conexión, así que el aviso no puede decir "con éxito".
+                        viewModel.updateOllamaConfig(
+                            hostUrl,
+                            modelName,
+                            webhookUrl,
+                            config.useOnDeviceLiteRTFallback
+                        )
+                        Toast.makeText(
+                            context,
+                            "Guardado en preferencias locales (host/modelo/webhook). Conexión no comprobada.",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = NeonTeal),
                     shape = RoundedCornerShape(8.dp),
@@ -254,7 +267,7 @@ fun OpenClawOllamaScreen(viewModel: ClawViewModel) {
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Guardar Parámetros de Puente", color = DarkBackground, fontWeight = FontWeight.Bold)
+                    Text("Guardar Parámetros del Runtime HTTP", color = DarkBackground, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -324,8 +337,14 @@ fun OpenClawOllamaScreen(viewModel: ClawViewModel) {
                 Button(
                     onClick = {
                         if (simMessageText.isNotBlank()) {
+                            // simulateWhatsAppIncoming es local: no entra payload de ningún webhook y
+                            // la propia entrada se rotula "NO ENVIADA por WhatsApp" en el historial.
                             viewModel.simulateWhatsAppIncoming(simSenderName, simMessageText)
-                            Toast.makeText(context, "Webhook WhatsApp recibido -> Ejecutando Acción", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                context,
+                                "Demo local: no llegó ningún webhook. Se envía el texto al runtime HTTP y se registra la respuesta como NO ENVIADA.",
+                                Toast.LENGTH_LONG
+                            ).show()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = NeonEmerald),
@@ -347,7 +366,8 @@ fun OpenClawOllamaScreen(viewModel: ClawViewModel) {
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Historial de Mensajes WhatsApp Procesados",
+            // Ninguno de estos mensajes "procesados" vino de WhatsApp: se crean con el botón de demo.
+            text = "Historial de la Demo (mensajes simulados, ninguno recibido de WhatsApp)",
             color = TextPrimary,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold

@@ -23,8 +23,6 @@ import androidx.compose.ui.unit.sp
 import com.example.clawcode.ClawApplication
 import com.example.clawcode.ui.theme.*
 import com.example.clawcode.viewmodel.ClawViewModel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 @Composable
 fun SystemPerformanceReportScreen(
@@ -32,24 +30,36 @@ fun SystemPerformanceReportScreen(
     onNavigateBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
-    
+
     val hardware = viewModel?.hardwareTelemetry?.collectAsState()?.value
         ?: com.example.clawcode.data.model.HardwareTelemetry()
 
     var crashLogs by remember { mutableStateOf(ClawApplication.getCrashLogs(context)) }
-    var isRunningStressTest by remember { mutableStateOf(false) }
     var stressTestResult by remember { mutableStateOf<String?>(null) }
 
     // Memory status calculation
     val ramUsed = hardware.ramUsedGb
     val ramTotal = hardware.ramTotalGb
-    val ramPercent = if (ramTotal > 0) (ramUsed / ramTotal * 100).toInt() else 65
-    val isHighMemoryPressure = ramPercent > 80
+    // ramTotal == 0 es la marca "sin medir" del sondeo: antes se rellenaba con un 65 % inventado.
+    val measuredRamPercent: Int? = if (ramTotal > 0f) (ramUsed / ramTotal * 100).toInt() else null
+    val isHighMemoryPressure = measuredRamPercent != null && measuredRamPercent > 80
+    val ramSummary = if (measuredRamPercent != null) {
+        "%.2f GB / %.2f GB (%d%%)".format(ramUsed, ramTotal, measuredRamPercent)
+    } else {
+        "sin medir (el sondeo de ActivityManager no ha devuelto valores)"
+    }
 
     // Thermal status calculation
     val batteryTemp = hardware.batteryTemperatureC
     val isThermalWarning = batteryTemp > 38.0f
+    val temperaturaTexto = if (batteryTemp >= 0f) {
+        "%.1f°C • %d Cores".format(batteryTemp, hardware.cpuCores)
+    } else {
+        "sin medir • %d Cores".format(hardware.cpuCores)
+    }
+
+    // El 0 de cpuUsagePercent y el -1 de batería también son centinelas de "sin medir".
+    val sinLecturas = measuredRamPercent == null && batteryTemp < 0f && hardware.cpuUsagePercent == 0
 
     LazyColumn(
         modifier = Modifier
@@ -90,8 +100,17 @@ fun SystemPerformanceReportScreen(
                 }
 
                 // Health Badge
-                val badgeBg = if (isHighMemoryPressure || isThermalWarning) WarningAmber else NeonEmerald
-                val badgeText = if (isHighMemoryPressure || isThermalWarning) "PRESIÓN ALTA" else "SISTEMA ÓPTIMO"
+                val badgeBg = when {
+                    isHighMemoryPressure || isThermalWarning -> WarningAmber
+                    sinLecturas -> TextMuted
+                    else -> NeonEmerald
+                }
+                val badgeText = when {
+                    isHighMemoryPressure || isThermalWarning -> "PRESIÓN ALTA"
+                    // Sin lecturas no se puede emitir un veredicto de "SISTEMA ÓPTIMO".
+                    sinLecturas -> "SIN MEDIR"
+                    else -> "DENTRO DE LO MEDIDO"
+                }
 
                 Surface(
                     color = badgeBg.copy(alpha = 0.15f),
@@ -149,7 +168,7 @@ fun SystemPerformanceReportScreen(
                             )
                         }
                         Text(
-                            text = "%.2f GB / %.2f GB (%d%%)".format(ramUsed, ramTotal, ramPercent),
+                            text = ramSummary,
                             color = if (isHighMemoryPressure) WarningAmber else NeonEmerald,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp,
@@ -160,7 +179,7 @@ fun SystemPerformanceReportScreen(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     LinearProgressIndicator(
-                        progress = { (ramPercent / 100f).coerceIn(0f, 1f) },
+                        progress = { ((measuredRamPercent ?: 0) / 100f).coerceIn(0f, 1f) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(8.dp)
@@ -172,10 +191,13 @@ fun SystemPerformanceReportScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
-                        text = if (isHighMemoryPressure) {
-                            "⚠️ Presión de memoria detectada. El gestor LMK (Low Memory Killer) de Android puede cerrar la aplicación en segundo plano si abres juegos u otras apps pesadas. Usa 'Limpiar Caché' en Ajustes para liberar RAM."
-                        } else {
-                            "✅ Margen de memoria saludable. El modelo Qwen 3.5 local tiene espacio suficiente para inferencias de texto y ejecución de acciones sin ser interrumpido por el sistema."
+                        text = when {
+                            isHighMemoryPressure ->
+                                "⚠️ Presión de memoria según el sondeo: la app ocupa una fracción alta de la RAM y Android puede cerrar el proceso en segundo plano. Nota: 'Limpiar Caché' en Ajustes borra archivos de disco, no libera RAM."
+                            measuredRamPercent == null ->
+                                "SIN MEDIR: el sondeo de ActivityManager todavía no ha devuelto RAM usada ni total en esta sesión, así que no hay margen que evaluar."
+                            else ->
+                                "Lectura del sondeo dentro del rango habitual. Ningún modelo corre dentro de esta app: la inferencia viaja por HTTP al runtime configurado, así que aquí no hay ningún peso local que necesitaría ese espacio."
                         },
                         color = TextSecondary,
                         fontSize = 12.sp
@@ -213,7 +235,7 @@ fun SystemPerformanceReportScreen(
                             )
                         }
                         Text(
-                            text = "%.1f°C • %d Cores".format(batteryTemp, hardware.cpuCores),
+                            text = temperaturaTexto,
                             color = if (isThermalWarning) WarningAmber else TextPrimary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp,
@@ -229,13 +251,15 @@ fun SystemPerformanceReportScreen(
                     ) {
                         MetricMiniBox(
                             label = "Batería",
-                            value = "${hardware.batteryLevelPercent}%",
+                            // batteryLevelPercent = -1 es el centinela de "sin medir" del modelo.
+                            value = if (hardware.batteryLevelPercent >= 0) "${hardware.batteryLevelPercent}%" else "sin medir",
                             icon = Icons.Default.BatteryChargingFull,
                             color = NeonEmerald
                         )
                         MetricMiniBox(
                             label = "Carga CPU",
-                            value = "${hardware.cpuUsagePercent}%",
+                            // cpuUsagePercent = 0 significa que aún no hay dos lecturas de /proc/stat.
+                            value = if (hardware.cpuUsagePercent > 0) "${hardware.cpuUsagePercent}%" else "sin medir",
                             icon = Icons.Default.Speed,
                             color = NeonTeal
                         )
@@ -250,7 +274,7 @@ fun SystemPerformanceReportScreen(
             }
         }
 
-        // Qwen Model Inference Stress Test Utility
+        // Telemetría real de la última inferencia (antes: stress test con números inventados)
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = DarkSurface),
@@ -266,13 +290,13 @@ fun SystemPerformanceReportScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = Icons.Default.FlashOn,
-                                contentDescription = "Stress Test",
+                                contentDescription = "Telemetría medida",
                                 tint = WarningAmber,
                                 modifier = Modifier.size(22.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "PRUEBA DE ESTRÉS QWEN GGUF",
+                                text = "MÉTRICAS REALES DEL ÚLTIMO TURNO",
                                 color = TextPrimary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp
@@ -281,40 +305,31 @@ fun SystemPerformanceReportScreen(
 
                         Button(
                             onClick = {
-                                isRunningStressTest = true
-                                stressTestResult = null
-                                coroutineScope.launch {
-                                    delay(1500)
-                                    val latencies = listOf(110, 125, 118, 132, 120)
-                                    val avgLatency = latencies.average().toInt()
-                                    val throughput = (1000.0 / avgLatency * 5.2).toInt()
-                                    stressTestResult = "✅ Resultados del Stress-Test:\n" +
-                                            " • Latencia Promedio Inferencia: ${avgLatency}ms\n" +
-                                            " • Velocidad Generación: $throughput tokens/segundo\n" +
-                                            " • Consumo RAM Pico: +180 MB\n" +
-                                            " • Diagnóstico: Su dispositivo está dentro del rango operativo óptimo para JARVIS Live y Asistente en segundo plano."
-                                    isRunningStressTest = false
+                                // Al pulsar no se mide nada: se vuelcan las lecturas reales que la sesión
+                                // ya tenga en HardwareTelemetry. Sin ningún turno enviado no hay latencia,
+                                // throughput ni pico de RAM, así que se dice en lugar de inventarlos.
+                                val measuredTps = hardware.tokensPerSecond
+                                stressTestResult = if (measuredTps > 0f) {
+                                    "Vuelco de telemetría medida:\n" +
+                                            " • Throughput del último turno: ${"%.2f".format(measuredTps)} t/s (lo publica el runtime HTTP; ningún modelo corre en el teléfono)\n" +
+                                            " • Latencia del turno: sin medir (HardwareTelemetry no guarda latencia; sólo la consola del cliente Ollama la imprime)\n" +
+                                            " • RAM usada: ${if (ramUsed > 0f) "%.2f GB".format(ramUsed) else "sin medir"}\n" +
+                                            " • Acelerador: ${hardware.npuGpuAccelerator}\n" +
+                                            " • No se ha ejecutado ninguna prueba de estrés: no hay rango operativo que calificar."
+                                } else {
+                                    "Nada medido: en esta sesión no se ha enviado ningún turno al runtime, así que no hay throughput, latencia ni consumo de RAM que mostrar."
                                 }
                             },
-                            enabled = !isRunningStressTest,
                             colors = ButtonDefaults.buttonColors(containerColor = WarningAmber),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                         ) {
-                            if (isRunningStressTest) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    color = Color.Black,
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                Text("⚡ Iniciar Test", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                            }
+                            Text("Volcar telemetría medida", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Mide la latencia de respuesta y tasa de tokens del puente GGUF LiteRT para confirmar si el procesador maneja la voz en tiempo real.",
+                        text = "Esta pantalla no mide nada por sí misma: muestra las lecturas reales que la app haya acumulado. El throughput lo publica el runtime HTTP en la última respuesta. No existe ningún puente GGUF/LiteRT en esta build, así que no hay latencia local que medir.",
                         color = TextMuted,
                         fontSize = 11.sp
                     )

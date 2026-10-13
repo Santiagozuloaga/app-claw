@@ -69,7 +69,9 @@ fun ClawLiveScreen(
     )
 
     var isMicMuted by remember { mutableStateOf(false) }
-    var isCameraActive by remember { mutableStateOf(false) }
+    // No existe "cámara activa": esta pantalla nunca muestra vista previa. Se guarda el resultado
+    // real del Intent de captura (Pair<Boolean,String> de executeActionIntent) para rotular el botón.
+    var resultadoCapturaCamara by remember { mutableStateOf<String?>(null) }
     var isListeningVoice by remember { mutableStateOf(false) }
     var customVoiceInput by remember { mutableStateOf("") }
     
@@ -102,8 +104,8 @@ fun ClawLiveScreen(
             speechLauncher.launch(intent)
         } catch (e: Exception) {
             isListeningVoice = false
-            // Fallback notification or toast if STT engine is absent in emulator
-            viewModel.mobileActionEngine.speak("Iniciando modo de entrada por voz. Puedes escribir o presionar los accesos directos.")
+            // El Intent del sistema no está disponible (sin motor STT): no se escucha nada, hay que escribir.
+            viewModel.mobileActionEngine.speak("El dictado del sistema no está disponible: escribe o presiona los accesos directos.")
         }
     }
 
@@ -139,7 +141,9 @@ fun ClawLiveScreen(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "JARVIS VOICE CORE EN VIVO",
+                    // No hay escucha continua: cada pulsación abre el Intent de dictado del sistema
+                    // (RecognizerIntent) para UNA frase y se cierra.
+                    text = "VOZ: CAPTURA ÚNICA POR EL SISTEMA",
                     color = palette.primary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
@@ -148,6 +152,8 @@ fun ClawLiveScreen(
             }
             
             // Background Live Service Toggle
+            // El servicio sólo publica una notificación persistente y mantiene el proceso vivo:
+            // no abre el micrófono ni transcribe nada, así que ni el aviso ni el chip pueden decirlo.
             var isBackgroundModeActive by remember { mutableStateOf(false) }
             FilterChip(
                 selected = isBackgroundModeActive,
@@ -156,18 +162,18 @@ fun ClawLiveScreen(
                     try {
                         if (isBackgroundModeActive) {
                             com.example.clawcode.service.ClawLiveBackgroundService.startService(context)
-                            viewModel.mobileActionEngine.speak("Servicio Claw Live activado en segundo plano")
-                            android.widget.Toast.makeText(context, "🎙️ Service Activo en segundo plano", android.widget.Toast.LENGTH_SHORT).show()
+                            viewModel.mobileActionEngine.speak("Servicio Claw Live iniciado: sólo mantiene la notificación")
+                            android.widget.Toast.makeText(context, "🔔 Service en segundo plano: mantiene la notificación (sin capturar audio)", android.widget.Toast.LENGTH_SHORT).show()
                         } else {
                             com.example.clawcode.service.ClawLiveBackgroundService.stopService(context)
-                            android.widget.Toast.makeText(context, "Service desactivado", android.widget.Toast.LENGTH_SHORT).show()
+                            android.widget.Toast.makeText(context, "Service detenido: la notificación se retira", android.widget.Toast.LENGTH_SHORT).show()
                         }
                     } catch (e: Exception) {
                         e.printStackTrace()
-                        android.widget.Toast.makeText(context, "Estado: Modo segundo plano listo (${e.localizedMessage})", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(context, "No se pudo controlar el service: ${e.localizedMessage}", android.widget.Toast.LENGTH_SHORT).show()
                     }
                 },
-                label = { Text(if (isBackgroundModeActive) " 🎙️ Fuera de App (ON)" else "Fuera de App (OFF)", fontSize = 10.sp) },
+                label = { Text(if (isBackgroundModeActive) " 🔔 Notificación (ON)" else "Notificación (OFF)", fontSize = 10.sp) },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = palette.primary.copy(alpha = 0.25f),
                     selectedLabelColor = palette.primary
@@ -221,7 +227,13 @@ fun ClawLiveScreen(
         Spacer(modifier = Modifier.height(12.dp))
         
         Text(
-            text = if (isMicMuted) "MICRÓFONO DESACTIVADO" else if (isListeningVoice) "ESCUCHANDO VOZ DEL OPERADOR..." else "JARVIS LISTO Y ESCUCHANDO",
+            // "LISTO Y ESCUCHANDO" afirmaba una escucha continua que no existe: el micrófono sólo se
+            // abre con el Intent de dictado del sistema, y para una sola frase.
+            text = when {
+                isMicMuted -> "CAPTURA DE VOZ SIN SOLICITUD PENDIENTE"
+                isListeningVoice -> "DICTADO DEL SISTEMA ABIERTO: UNA FRASE"
+                else -> "NO ESCUCHA CONTINUAMENTE: PULSA EL MICRÓFONO PARA UNA FRASE"
+            },
             color = if (isMicMuted) RedError else palette.primary,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
@@ -245,7 +257,8 @@ fun ClawLiveScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("TRANSCRIPCIÓN EN TIEMPO REAL", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextMuted)
+                    // Renderiza chatMessages (historial del chat); nunca fue transcripción de audio.
+                    Text("HISTORIAL DEL CHAT (NO TRANSCRIPCIÓN DE AUDIO)", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextMuted)
                     Text("${chatMessages.size} Mensajes", fontSize = 9.sp, color = palette.primary)
                 }
                 Spacer(modifier = Modifier.height(10.dp))
@@ -329,8 +342,8 @@ fun ClawLiveScreen(
                         onClick = {
                             when (prompt) {
                                 "Tomar Foto" -> {
-                                    isCameraActive = true
-                                    viewModel.mobileActionEngine.executeActionIntent("take_photo_camera", emptyMap())
+                                    val (lanzada, detalle) = viewModel.mobileActionEngine.executeActionIntent("take_photo_camera", emptyMap())
+                                    resultadoCapturaCamara = if (lanzada) detalle else "Nada lanzado: $detalle"
                                     handleUserVoicePrompt("Toma una foto con la cámara")
                                 }
                                 "Escanear OCR" -> {
@@ -441,32 +454,35 @@ fun ClawLiveScreen(
                     )
                 }
                 
-                // Camera
+                // Cámara: no hay vista previa en esta pantalla, así que el botón no "enciende" nada;
+                // lanza el Intent de captura del sistema y conserva el resultado real que devuelve
+                // executeActionIntent (Pair<Boolean, String>).
                 IconButton(
-                    onClick = { 
-                        isCameraActive = !isCameraActive 
-                        if (isCameraActive) {
-                            viewModel.mobileActionEngine.executeActionIntent("take_photo_camera", emptyMap())
-                        }
+                    onClick = {
+                        val (lanzada, detalle) = viewModel.mobileActionEngine.executeActionIntent("take_photo_camera", emptyMap())
+                        resultadoCapturaCamara = if (lanzada) detalle else "Nada lanzado: $detalle"
                     },
                     modifier = Modifier
                         .size(48.dp)
                         .background(
-                            if (isCameraActive) palette.secondary.copy(alpha = 0.2f) else palette.surface,
+                            if (resultadoCapturaCamara != null) palette.secondary.copy(alpha = 0.2f) else palette.surface,
                             CircleShape
                         )
                 ) {
                     Icon(
-                        imageVector = if (isCameraActive) Icons.Default.Videocam else Icons.Default.VideocamOff,
-                        contentDescription = "Cam",
-                        tint = if (isCameraActive) palette.secondary else TextSecondary
+                        // Videocam/VideocamOff insinuaban un stream en vivo que no existe: es un solo
+                        // disparo IMAGE_CAPTURE y el rótulo dice lo que pasó con ese disparo.
+                        imageVector = Icons.Default.PhotoCamera,
+                        contentDescription = resultadoCapturaCamara
+                            ?: "Lanzar captura de cámara (no hay vista previa en esta pantalla)",
+                        tint = if (resultadoCapturaCamara != null) palette.secondary else TextSecondary
                     )
                 }
                 
                 // End Call
                 IconButton(
                     onClick = {
-                        viewModel.mobileActionEngine.speak("Sesión de voz JARVIS finalizada.")
+                        viewModel.mobileActionEngine.speak("Modo de voz terminado: no queda ninguna escucha abierta.")
                         onNavigateBack()
                     },
                     modifier = Modifier.size(48.dp).background(RedError, CircleShape)

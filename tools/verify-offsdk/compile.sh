@@ -69,6 +69,7 @@ SRC=(
   "$V/VerifyGrounding.kt"
   "$V/VerifyUiClaims.kt"
   "$V/VerifyMarkdown.kt"
+  "$V/VerifySha256.kt"
   "$V/VerifyConnectors.kt"
   # AppConnectorManager real, con stubs de PackageManager/Uri/cliente Gemini para poder ejecutarlo.
   "$APP/AppConnectorManager.kt"

@@ -75,7 +75,11 @@ fun MemoryScreen(
                             }
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "${memories.sumOf { it.tokenCount }} tokens de contexto total",
+                                // tokenCount es value.length * 4 (ClawEngine.addMemory): ninguna
+                                // tokenización real detrás. Se muestra el número guardado rotulado como
+                                // estimación, junto con el conteo de caracteres que sí es medido.
+                                text = "${memories.sumOf { it.value.length }} caracteres guardados • " +
+                                        "'${memories.sumOf { it.tokenCount }} tokens' es estimación por caracteres (×4), no tokens medidos",
                                 style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                             )
                         }
@@ -114,11 +118,13 @@ fun MemoryScreen(
                                 strokeWidth = 2.dp
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Compactando tokens...", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            // compactMemory() ya no multiplica nada: declara que no hay backend.
+                            // ningún texto se resume ni se elimina, así que el rótulo no puede prometerlo.
+                            Text("Sin backend de resumen: ningún texto se compacta...", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         } else {
                             Icon(imageVector = Icons.Default.Compress, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Compactar Memoria", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text("Compactar: sin modelo de resumen, no libera nada", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
                 }

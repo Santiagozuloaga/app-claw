@@ -370,22 +370,25 @@ fun ToolItemCard(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(NeonEmerald.copy(alpha = 0.2f))
+                                .background(NeonAmber.copy(alpha = 0.2f))
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
-                                .border(1.dp, NeonEmerald.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                .border(1.dp, NeonAmber.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(
                                     modifier = Modifier
                                         .size(6.dp)
                                         .clip(androidx.compose.foundation.shape.CircleShape)
-                                        .background(NeonEmerald)
+                                        .background(NeonAmber)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
+                                // `tool.isEnabled` es sólo la preferencia del interruptor: ClawEngine.toggleTool
+                                // hace `copy(isEnabled = !isEnabled)` y no abre ninguna conexión. Aquí no hay
+                                // sonda de red, así que ya no se afirma "CONECTADO / ONLINE".
                                 Text(
-                                    text = "CONECTADO / ONLINE",
+                                    text = "ACTIVADA / SIN VERIFICAR CONEXIÓN",
                                     fontSize = 9.sp,
-                                    color = NeonEmerald,
+                                    color = NeonAmber,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -398,8 +401,11 @@ fun ToolItemCard(
                     style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                 )
                 Spacer(modifier = Modifier.height(6.dp))
+                // `callCount` y `latencyMs` de McpTool sólo se escriben en los seeds de ClawEngine
+                // (189, 312, 94, 42, 128, 210, 345, 178, 560 / 4..18 ms) y nada los incrementa jamás,
+                // así que mostrarlos daría a unas cifras inventadas el aspecto de una medida real.
                 Text(
-                    text = "Calls: ${tool.callCount} | Ping: ${tool.latencyMs}ms",
+                    text = "Calls: sin datos | Ping: sin medir",
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontFamily = FontFamily.Monospace,
                         color = TextMuted
@@ -413,7 +419,9 @@ fun ToolItemCard(
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                         modifier = Modifier.height(28.dp).border(1.dp, NeonEmerald.copy(alpha=0.5f), RoundedCornerShape(4.dp))
                     ) {
-                        Text("VERIFICAR CONEXIÓN", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = NeonEmerald)
+                        // El diálogo solo puede consultar paquetes instalados y placeholders: si no
+                        // hay nada que medir, responderá "Sin verificar", así que el botón no promete éxito.
+                        Text("VERIFICAR ESTADO (SI ES MEDIBLE)", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = NeonEmerald)
                     }
                 }
             }

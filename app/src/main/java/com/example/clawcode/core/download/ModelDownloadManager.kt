@@ -1,5 +1,6 @@
 package com.example.clawcode.core.download
 
+import com.example.clawcode.core.integrity.ResultadoIntegridad
 import com.example.clawcode.core.integrity.Sha256Verifier
 import com.example.clawcode.core.model.DownloadStatus
 import com.example.clawcode.core.model.ModelDescriptor
@@ -146,24 +147,31 @@ class ModelDownloadManager(private val storage: ModelStorage) {
                     _downloadProgresses.update { map ->
                         map + (model.id to map[model.id]!!.copy(status = DownloadStatus.VERIFYING))
                     }
-                    delay(500)
 
-                    // Move file from downloads chunk to models folder
+                    // Mover del chunk temporal a la carpeta de modelos
                     val finalModelFile = storage.getModelFile(model.id, "model.gguf")
                     chunkFile.copyTo(finalModelFile, overwrite = true)
                     chunkFile.delete()
 
-                    // verifyFileHash devuelve true para manifiestos de desarrollo (sha256 vacío,
-                    // 'dummy_sha256' o truncado), así que añadirlo no rompe esa ruta: con un hash
-                    // real ya no se instala un archivo corrupto o sustituido, que antes pasaba por
-                    // bueno porque sólo se comparaba el tamaño.
-                    val isValid = Sha256Verifier.verifySize(finalModelFile, targetBytes) &&
-                            Sha256Verifier.verifyFileHash(finalModelFile, model.sha256)
-                    if (isValid) {
+                    val talla = Sha256Verifier.verifySize(finalModelFile, targetBytes)
+                    val hash = Sha256Verifier.verifyFileHash(finalModelFile, model.sha256)
+                    val rechazado = talla == ResultadoIntegridad.NO_COINCIDE ||
+                            hash == ResultadoIntegridad.NO_COINCIDE
+                    val notaIntegridad = when {
+                        talla == ResultadoIntegridad.VERIFICADO &&
+                            hash == ResultadoIntegridad.VERIFICADO -> null
+                        hash == ResultadoIntegridad.SIN_REFERENCIA ->
+                            "AVISO: integridad SIN verificar. El manifiesto de '${model.id}' no trae " +
+                                "un SHA-256 de 64 dígitos hexadecimales, así que no hay con qué " +
+                                "comparar el archivo descargado."
+                        else -> "AVISO: integridad SIN verificar (falta la talla de referencia)."
+                    }
+                    if (!rechazado) {
                         _downloadProgresses.update { map ->
                             map + (model.id to map[model.id]!!.copy(
                                 status = DownloadStatus.INSTALLED,
-                                progressPercent = 100f
+                                progressPercent = 100f,
+                                errorMessage = notaIntegridad
                             ))
                         }
                         onComplete(true)

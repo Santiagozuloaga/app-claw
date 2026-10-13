@@ -84,6 +84,10 @@ fun MainAppScreen(viewModel: ClawViewModel) {
     var tabStack by remember { mutableStateOf(listOf(initialTab)) }
 
     val jarvisModfile by viewModel.jarvisModfile.collectAsStateWithLifecycle()
+    // El rótulo del cajón y la lista de "recientes" salen ahora del estado real del motor:
+    // ollamaConfig.modelName (persistido por PrefsOllamaConfigStore) y chatMessages.
+    val ollamaConfig by viewModel.ollamaConfig.collectAsStateWithLifecycle()
+    val chatMessages by viewModel.chatMessages.collectAsStateWithLifecycle()
     val drawerAvatarIcon = remember(jarvisModfile.selectedAvatarId) {
         when (jarvisModfile.selectedAvatarId) {
             1 -> Icons.Default.SmartToy
@@ -161,7 +165,9 @@ fun MainAppScreen(viewModel: ClawViewModel) {
                                 )
                             )
                             Text(
-                                text = "v2.5 • Gemini & Qwen 3.5 Local",
+                                // "Gemini & Qwen 3.5 Local" prometía pesos locales que ninguna ruta
+                                // carga: el nombre mostrado es ahora el modelo HTTP realmente configurado.
+                                text = "v2.5 • runtime HTTP: ${ollamaConfig.modelName}",
                                 style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
                             )
                         }
@@ -189,9 +195,11 @@ fun MainAppScreen(viewModel: ClawViewModel) {
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Historial de Conversaciones (Gemini / Claude Style)
+                    // Historial real del chat. Esta app tiene UN solo hilo (engine.chatMessages):
+                    // antes la lista traía 4 títulos inventados y pulsarlos no cargaba nada, así que
+                    // el rótulo deja de prometer "conversaciones" y los títulos salen de los mensajes.
                     Text(
-                        text = "💬 HISTORIAL DE CONVERSACIONES",
+                        text = "💬 ÚLTIMOS MENSAJES ENVIADOS",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = TextMuted,
@@ -199,12 +207,20 @@ fun MainAppScreen(viewModel: ClawViewModel) {
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp)
                     )
 
-                    val recentChats = listOf(
-                        "Análisis de Rendimiento y Memoria NPU",
-                        "Prueba de Comandos de Voz JARVIS",
-                        "Integración de Acciones Móviles & OCR",
-                        "Configuración Modfile y Personalidad"
-                    )
+                    val recentChats = chatMessages
+                        .filter { it.sender == "USER" }
+                        .takeLast(4)
+                        .reversed()
+                        .map { it.text.replace("\n", " ").take(46) }
+
+                    if (recentChats.isEmpty()) {
+                        Text(
+                            text = "Sin mensajes en el historial todavía.",
+                            fontSize = 11.sp,
+                            color = TextMuted,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
 
                     recentChats.forEach { chatTitle ->
                         NavigationDrawerItem(
@@ -219,6 +235,7 @@ fun MainAppScreen(viewModel: ClawViewModel) {
                             icon = { Icon(imageVector = Icons.Default.ChatBubbleOutline, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp)) },
                             selected = false,
                             onClick = {
+                                // Abre el único chat que existe; no "carga una conversación" por título.
                                 navigateTo(NavigationTab.JARVIS_AGENT)
                             },
                             colors = NavigationDrawerItemDefaults.colors(

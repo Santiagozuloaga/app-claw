@@ -177,25 +177,10 @@ class MobileActionEngine(private val context: Context) : TextToSpeech.OnInitList
             e.printStackTrace()
         }
 
-        // Fallback / Preset default Android apps if query is limited in sandbox
-        val presetApps = listOf(
-            InstalledApp("Gmail", "com.google.android.gm", "Google Email"),
-            InstalledApp("Notion", "notion.id", "Productivity"),
-            InstalledApp("WhatsApp", "com.whatsapp", "Messaging"),
-            InstalledApp("Spotify", "com.spotify.music", "Multimedia"),
-            InstalledApp("YouTube", "com.google.android.youtube", "Multimedia"),
-            InstalledApp("Google Maps", "com.google.android.apps.maps", "Navigation"),
-            InstalledApp("Google Calendar", "com.google.android.calendar", "Productivity"),
-            InstalledApp("Ajustes / Settings", "com.android.settings", "System"),
-            InstalledApp("Cámara", "com.android.camera", "System Tools"),
-            InstalledApp("Calculadora", "com.android.calculator2", "System Tools"),
-            InstalledApp("Google Chrome", "com.android.chrome", "Browser"),
-            InstalledApp("Telegram", "org.telegram.messenger", "Messaging"),
-            InstalledApp("Instagram", "com.instagram.android", "Social"),
-            InstalledApp("Slack", "com.Slack", "Work")
-        )
-
-        return (installedAppsList + presetApps).distinctBy { it.packageName }
+        // Antes se pegaban aquí 14 apps de ejemplo (Gmail, Notion, WhatsApp, Spotify…).
+        // Esa lista fusionada alimenta el lanzador y el chat, así que una app podía
+        // "abrirse" aunque no estuviera instalada. Sólo se devuelve lo que el sistema reporta.
+        return installedAppsList.distinctBy { it.packageName }
     }
 
     fun launchAppByName(appNameQuery: String): Pair<Boolean, String> {
@@ -213,27 +198,19 @@ class MobileActionEngine(private val context: Context) : TextToSpeech.OnInitList
                 speak("Abriendo la aplicación ${match.appName}")
                 Pair(true, "Lanzada app '${match.appName}' (${match.packageName})")
             } else {
-                // Direct store / web launch fallback
-                val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=${match.packageName}")).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                context.startActivity(webIntent)
-                speak("Abriendo enlace para ${match.appName}")
-                Pair(true, "Abriendo intent para '${match.appName}'")
+                // El paquete está en la lista pero el sistema no expone Activity de lanzamiento:
+                // no se abrió la app, y decir lo contrario sería un falso éxito.
+                speak("El sistema no expone cómo abrir ${match.appName}")
+                Pair(
+                    false,
+                    "'${match.appName}' (${match.packageName}) no tiene Activity de lanzamiento accesible: no se abrió nada."
+                )
             }
         } else {
-            // Generic intent launcher
-            val genericIntent = Intent(Intent.ACTION_MAIN).apply {
-                addCategory(Intent.CATEGORY_LAUNCHER)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            try {
-                context.startActivity(genericIntent)
-                speak("Buscando la aplicación $appNameQuery en el sistema")
-                Pair(true, "Buscando e intentando abrir app $appNameQuery")
-            } catch (e: Exception) {
-                Pair(false, "No se encontró la app '$appNameQuery'")
-            }
+            // Abrir el launcher genérico y reportarlo como éxito hacia parecer que la app se
+            // había iniciado. Sin coincidencia real no hay acción que anunciar.
+            speak("No encontré la aplicación $appNameQuery")
+            Pair(false, "Ninguna app instalada coincide con '$appNameQuery': no se abrió nada.")
         }
     }
 
@@ -613,8 +590,12 @@ class MobileActionEngine(private val context: Context) : TextToSpeech.OnInitList
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
                     context.startActivity(intent)
-                    speak("Ejecutando búsqueda en Google para $query")
-                    Pair(true, "Google Search function executed for '$query'")
+                    speak("Abriendo la búsqueda de Google para $query")
+                    Pair(
+                        true,
+                        "Se abrió la búsqueda '$query' en el navegador. No es búsqueda con grounding: " +
+                            "la app no recibe los resultados de vuelta."
+                    )
                 }
 
                 "toggle_flashlight" -> {
@@ -638,9 +619,10 @@ class MobileActionEngine(private val context: Context) : TextToSpeech.OnInitList
                             Pair(false, "No camera with flash found")
                         }
                     } catch (e: Exception) {
-                        val stateText = if (turnOn) "encendida" else "apagada"
-                        speak("Linterna $stateText")
-                        Pair(true, "Linterna $stateText")
+                        // Este bloque es el camino de fallo: el LED no cambió. Antes decía (y voz)
+                        // "Linterna encendida", exactamente lo contrario de lo que pasó.
+                        speak("No pude controlar la linterna")
+                        Pair(false, "El sistema rechazó el control de la linterna: ${e.message}")
                     }
                 }
 
@@ -648,8 +630,16 @@ class MobileActionEngine(private val context: Context) : TextToSpeech.OnInitList
                     val cameraModule = CameraModule(context)
                     val intent = cameraModule.createCaptureIntent()
                     context.startActivity(intent)
-                    speak("Abriendo la cámara del dispositivo con módulo de permisos activo")
-                    Pair(true, "Camera capture intent launched with CameraModule")
+                    val permisoConcedido = cameraModule.hasCameraPermission()
+                    speak("Abriendo la cámara del dispositivo")
+                    Pair(
+                        true,
+                        if (permisoConcedido) {
+                            "Intent de captura enviado a la app de cámara, con permiso de cámara ya concedido."
+                        } else {
+                            "Intent de captura enviado a la app de cámara; este módulo aún no tiene el permiso de cámara concedido."
+                        }
+                    )
                 }
 
                 "scan_image_ocr" -> {
@@ -669,8 +659,20 @@ class MobileActionEngine(private val context: Context) : TextToSpeech.OnInitList
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
                     context.startActivity(intent)
-                    speak("Conectando con el módulo GitHub para inspeccionar $target")
-                    Pair(true, "GitHubRepositoryModule connected for repository: $target")
+                    speak("Abriendo GitHub para $target")
+                    Pair(
+                        true,
+                        "Se abrió $url en el navegador. No hay módulo GitHub conectado: la app no " +
+                            "consulta la API ni lee el repositorio, solo abre el enlace."
+                    )
+                }
+
+                "falta_datos" -> {
+                    val accion = params["accion"] ?: "la acción"
+                    val falta = params["falta"] ?: "un dato obligatorio"
+                    speak("Necesito $falta para $accion")
+                    Toast.makeText(context, "Falta $falta", Toast.LENGTH_SHORT).show()
+                    Pair(false, "No se ejecutó '$accion': falta $falta. La app no rellena ese dato por su cuenta.")
                 }
 
                 else -> {
@@ -716,11 +718,17 @@ class MobileActionEngine(private val context: Context) : TextToSpeech.OnInitList
                 )
             }
             lower.contains("correo") || lower.contains("gmail") || lower.contains("email") -> {
-                val recipient = if (lower.contains("a ")) prompt.substringAfter("a ").substringBefore(" ").trim() else "contacto@ejemplo.com"
-                Pair(
-                    "open_gmail_compose",
-                    mapOf("recipient" to recipient, "subject" to "Mensaje enviado desde CLAW", "body" to prompt)
-                )
+                val destinatario = Regex("(?:a|para)\\s+([\\w.+-]+@[\\w.-]+)").find(prompt)?.groupValues?.get(1)
+                if (destinatario == null) {
+                    // Antes caía en "contacto@ejemplo.com": un Intent real de redacción con un
+                    // destinatario inventado por la app.
+                    Pair("falta_datos", mapOf("accion" to "open_gmail_compose", "falta" to "el destinatario con su dirección de correo"))
+                } else {
+                    Pair(
+                        "open_gmail_compose",
+                        mapOf("recipient" to destinatario, "subject" to "Mensaje enviado desde CLAW", "body" to prompt)
+                    )
+                }
             }
             lower.contains("notion") -> {
                 val query = prompt.substringAfter("notion", "Proyectos").trim()
@@ -730,10 +738,14 @@ class MobileActionEngine(private val context: Context) : TextToSpeech.OnInitList
                 )
             }
             lower.contains("whatsapp") || lower.contains("mensaj") || lower.contains("openclaw") -> {
-                Pair(
-                    "send_whatsapp_openclaw",
-                    mapOf("phone_or_contact" to "+573000000000", "message" to prompt)
-                )
+                val numero = Regex("\\+?\\d[\\d\\s-]{6,}").find(prompt)?.value?.trim()
+                if (numero == null) {
+                    // "+573000000000" era el valor por defecto: se abría WhatsApp con un número
+                    // que nadie pidió y que puede no existir.
+                    Pair("falta_datos", mapOf("accion" to "send_whatsapp_openclaw", "falta" to "el número o contacto de destino"))
+                } else {
+                    Pair("send_whatsapp_openclaw", mapOf("phone_or_contact" to numero, "message" to prompt))
+                }
             }
             lower.contains("calendario") || lower.contains("evento") || lower.contains("reunión") || lower.contains("almuerzo") -> {
                 Pair(
@@ -742,10 +754,14 @@ class MobileActionEngine(private val context: Context) : TextToSpeech.OnInitList
                 )
             }
             lower.contains("contacto") || lower.contains("agrega a") || lower.contains("guarda a") -> {
-                Pair(
-                    "create_contact",
-                    mapOf("name" to "Nuevo Contacto IA", "phone" to "+573001234567")
-                )
+                val telefono = Regex("\\+?\\d[\\d\\s-]{6,}").find(prompt)?.value?.trim()
+                val nombre = Regex("(?:agrega|agregar|guarda|guardar)\\s+a?\\s*(.+?)\\s+con").find(prompt)?.groupValues?.get(1)?.trim()
+                if (nombre.isNullOrBlank() || telefono == null) {
+                    // "Nuevo Contacto IA" + "+573001234567" se escribían en la agenda del usuario.
+                    Pair("falta_datos", mapOf("accion" to "create_contact", "falta" to "el nombre y el teléfono de la persona"))
+                } else {
+                    Pair("create_contact", mapOf("name" to nombre, "phone" to telefono))
+                }
             }
             lower.contains("wifi") || lower.contains("red") || lower.contains("ajustes") -> {
                 Pair(
@@ -768,7 +784,7 @@ class MobileActionEngine(private val context: Context) : TextToSpeech.OnInitList
                 Pair("take_photo_camera", emptyMap())
             }
             lower.contains("ocr") || lower.contains("escanea") || lower.contains("extrae texto") -> {
-                Pair("scan_image_ocr", mapOf("image_uri" to "last_attachment"))
+                Pair("scan_image_ocr", emptyMap())
             }
             lower.contains("github") || lower.contains("repositorio") -> {
                 val query = prompt.replace("busca en github", "").replace("github", "").trim()

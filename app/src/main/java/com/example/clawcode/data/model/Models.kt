@@ -40,13 +40,16 @@ data class McpTool(
     val latencyMs: Int = 12
 )
 
+// Cero significa "sin actividad medida". Antes estos valores de fabrica (4 agentes, 28 tareas,
+// 14250 tokens, ratio 0,68 y un "OPERATIONAL" que nadie recalculaba) eran la unica cifra que
+// alguna vez podia salir de aqui sin haber sido producida por el motor.
 data class AgentStats(
-    val activeAgents: Int = 4,
-    val totalTasks: Int = 28,
-    val completedTasks: Int = 24,
-    val totalMemoryTokens: Int = 14250,
-    val compactionRatio: Float = 0.68f,
-    val systemStatus: String = "OPERATIONAL"
+    val activeAgents: Int = 0,
+    val totalTasks: Int = 0,
+    val completedTasks: Int = 0,
+    val totalMemoryTokens: Int = 0,
+    val compactionRatio: Float = 0f,
+    val systemStatus: String = "SIN MEDIR"
 )
 
 data class ConsoleLog(

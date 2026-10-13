@@ -40,10 +40,13 @@ class ClawLiveBackgroundService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        // Este servicio no abre el microfono: no hay AudioRecord, ni SpeechRecognizer, ni TTS
+        // en esta clase. Antes se anunciaba como "Live Voice Activo" y el manifest pedía tipo
+        // "microphone", con lo que el sistema mostraba un indicador de escucha inexistente.
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("JARVIS Live Voice Activo 🎙️")
-            .setContentText("Claw Live ejecutándose en segundo plano...")
-            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
+            .setContentTitle("CLAW en segundo plano")
+            .setContentText("Solo mantiene abierta la app: no está escuchando ni grabando audio.")
+            .setSmallIcon(android.R.drawable.stat_notify_sync)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)

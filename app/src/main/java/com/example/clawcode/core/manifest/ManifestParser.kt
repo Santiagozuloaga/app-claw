@@ -56,7 +56,9 @@ object ManifestParser {
     fun toDescriptor(manifest: ModelManifest): ModelDescriptor {
         val mainFile = manifest.files.firstOrNull { it.name.endsWith(".gguf") } 
             ?: manifest.files.firstOrNull() 
-            ?: ModelManifestFile("qwen3.5-3b.gguf", 1950000000L, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
+            // Sin fichero en el manifiesto no se inventa uno: 0 bytes y hash vacio dejan la
+            // integridad en "sin referencia", que es lo que Sha256Verifier sabe expresar.
+            ?: ModelManifestFile("sin archivo en el manifiesto", 0L, "")
 
         return ModelDescriptor(
             id = manifest.id,

@@ -35,18 +35,34 @@ fun ToolsScreen(
         if (selectedCategory == null) tools else tools.filter { it.category.equals(selectedCategory, ignoreCase = true) }
     }
 
+    // Estado REAL de una herramienta: `verificarEstadosApps()` sólo sondea paquetes instalados y si
+    // el token salió del placeholder. Cualquier herramienta sin entrada aquí devuelve `null`, que se
+    // lee como "sin verificar"; antes el `else` afirmaba "Verificada y Activa" sin ninguna sonda.
+    fun estadoHerramienta(tool: McpTool): String? {
+        val estados = appConnector.verificarEstadosApps()
+        return when {
+            tool.name.contains("WhatsApp", ignoreCase = true) -> estados["WhatsApp"]
+            tool.name.contains("Notion", ignoreCase = true) -> estados["Notion"]
+            tool.name.contains("GitHub", ignoreCase = true) -> estados["GitHub"]
+            tool.name.contains("Gmail", ignoreCase = true) || tool.name.contains("Drive", ignoreCase = true) -> estados["Google Workspace"]
+            tool.name.contains("Edge", ignoreCase = true) -> estados["AI Edge (Gemini Nano)"]
+            else -> null
+        }
+    }
+
+    // Un interruptor activado no es una conexión. Sólo cuenta lo que la sonda anterior confirmó.
+    val verificadasPositivas = remember(tools) {
+        tools.count { tool ->
+            val estado = estadoHerramienta(tool)
+            estado != null && (estado == "Verificada (Instalada)" || estado == "Token propio configurado")
+        }
+    }
+    val interruptoresActivados = tools.count { it.isEnabled }
+
     if (verifyingTool != null) {
         val tool = verifyingTool!!
-        val estados = appConnector.verificarEstadosApps()
-        
-        val estadoActual = when {
-            tool.name.contains("WhatsApp", ignoreCase = true) -> estados["WhatsApp"] ?: "Desconocido"
-            tool.name.contains("Notion", ignoreCase = true) -> estados["Notion"] ?: "Desconocido"
-            tool.name.contains("GitHub", ignoreCase = true) -> estados["GitHub"] ?: "Desconocido"
-            tool.name.contains("Gmail", ignoreCase = true) || tool.name.contains("Drive", ignoreCase = true) -> estados["Google Workspace"] ?: "Desconocido"
-            tool.name.contains("Edge", ignoreCase = true) -> estados["AI Edge (Gemini Nano)"] ?: "Desconocido"
-            else -> "Verificada y Activa (Integración Interna)"
-        }
+        val estadoActual = estadoHerramienta(tool)
+            ?: "Sin verificar: ${tool.name} no tiene ninguna comprobación en esta build"
 
         AlertDialog(
             onDismissRequest = { verifyingTool = null },
@@ -58,7 +74,12 @@ fun ToolsScreen(
                     Text("Herramienta: ${tool.name}", fontWeight = FontWeight.Bold, color = TextPrimary)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("Estado actual:", color = TextSecondary)
-                    Text(estadoActual, color = if (estadoActual.contains("Falta") || estadoActual.contains("No")) NeonAmber else NeonTeal, fontWeight = FontWeight.Bold)
+                    // Verde sólo cuando la sonda confirmó; ámbar para todo lo demás (incl. sin medir).
+                    Text(
+                        estadoActual,
+                        color = if (estadoActual == "Verificada (Instalada)" || estadoActual == "Token propio configurado") NeonTeal else NeonAmber,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             },
             confirmButton = {
@@ -90,7 +111,9 @@ fun ToolsScreen(
                     )
                 )
                 Text(
-                    text = "${tools.count { it.isEnabled }} de ${tools.size} herramientas activas (GitHub, Notion, Gmail, Drive, Edge AI)",
+                    // El interruptor es sólo una preferencia guardada: no afirma conexiones.
+                    text = "$verificadasPositivas de ${tools.size} con estado verificado por la app " +
+                            "(el resto: sin verificar) · $interruptoresActivados interruptores activados (preferencia guardada)",
                     style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                 )
             }

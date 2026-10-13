@@ -102,7 +102,9 @@ fun DiskSpaceManagerScreen(viewModel: ClawViewModel) {
                 }
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "El archivo ejecutable de la aplicación (APK) mantiene un tamaño liviano (~25 MB). Los modelos de Inteligencia Artificial descargados (Qwen GGUF, LiteRT, Llama) se almacenan en los 'Datos de la Aplicación'. Puedes eliminar modelos no utilizados para recuperar espacio.",
+                    // "~25 MB" era un literal que nadie leía del APK, y LiteRT/Llama no corren en esta
+                    // build: sólo se listan archivos GGUF descargados, y eso sí se mide en disco.
+                    text = "El tamaño del APK no se mide en esta pantalla: no hay lectura del paquete que lo respalde, así que se muestra sin valor. Lo que sí se mide son las carpetas de esta app (modelos, caché y datos internos), listadas abajo con su peso real; puedes eliminar modelos no utilizados para recuperar espacio.",
                     fontSize = 11.sp,
                     color = TextSecondary,
                     lineHeight = 16.sp
@@ -125,19 +127,50 @@ fun DiskSpaceManagerScreen(viewModel: ClawViewModel) {
                 ) {
                     Text("Resumen de Memoria en Disco", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = NeonEmerald)
                     Text(
-                        "${String.format("%.1f", storageOverview.freeDeviceStorageGb)} GB Libres en Dispositivo",
+                        if (storageOverview.freeDeviceStorageGb >= 0f)
+                            "${String.format("%.1f", storageOverview.freeDeviceStorageGb)} GB libres en el dispositivo"
+                        else "Almacenamiento libre sin medir",
                         fontSize = 11.sp,
                         color = TextMuted
                     )
                 }
 
+                // Antes el gestor caía en 16.4/128.0 GB "típicos" si StatFs fallaba y aquí se
+                // mostraban como medidos. Ahora -1 significa sin medir y se dice tal cual.
+                if (storageOverview.totalDeviceStorageGb < 0f) {
+                    Text(
+                        text = "StatFs no devolvió la capacidad del dispositivo: las cifras de GB no " +
+                                "están disponibles. Los MB de Modelos/Caché/Datos sí son suma real de archivos.",
+                        fontSize = 10.sp,
+                        color = WarningAmber,
+                        lineHeight = 14.sp
+                    )
+                }
+
                 // Storage Progress Bar
+                // Antes: (totalUsedMb / 5000f).coerceIn(0.05f, 1f). 5000 MB era una capacidad inventada
+                // y el suelo 0.05 pintaba uso aunque la carpeta estuviera vacía. Ahora la fracción real
+                // de uso de la app sobre la capacidad que StatFs declara (totalDeviceStorageGb).
                 val totalUsedMb = storageOverview.modelsStorageMb + storageOverview.cacheStorageMb + storageOverview.internalDataStorageMb
+                val capacidadDeclaradaMb = storageOverview.totalDeviceStorageGb * 1024f
+                val fraccionDeUso = if (capacidadDeclaradaMb > 0f) {
+                    (totalUsedMb / capacidadDeclaradaMb).coerceIn(0f, 1f)
+                } else 0f
                 LinearProgressIndicator(
-                    progress = (totalUsedMb / 5000f).coerceIn(0.05f, 1.0f),
+                    progress = fraccionDeUso,
                     modifier = Modifier.fillMaxWidth().height(8.dp),
                     color = NeonEmerald,
                     trackColor = DarkBackground
+                )
+                Text(
+                    text = if (storageOverview.totalDeviceStorageGb >= 0f)
+                        "Uso de la app (${String.format("%.1f", totalUsedMb)} MB) sobre los " +
+                            "${String.format("%.1f", storageOverview.totalDeviceStorageGb)} GB declarados por StatFs."
+                    else
+                        "Uso de la app: ${String.format("%.1f", totalUsedMb)} MB. Capacidad total del " +
+                            "dispositivo sin medir, así que el porcentaje no está disponible.",
+                    fontSize = 10.sp,
+                    color = TextMuted
                 )
 
                 Row(

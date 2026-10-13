@@ -45,7 +45,7 @@ class ModelRepository(
                 {
                   "name": "qwen3.5-3b-q4_k_m.gguf",
                   "size": 1950000000,
-                  "sha256": "3a8d90f23b118b62817812bc85ef109"
+                  "sha256": ""
                 }
               ]
             }
@@ -64,7 +64,7 @@ class ModelRepository(
                 {
                   "name": "qwen3.5-0.5b-q8_0.gguf",
                   "size": 620000000,
-                  "sha256": "1f8e9198a2309e419810f22"
+                  "sha256": ""
                 }
               ]
             }
@@ -83,7 +83,7 @@ class ModelRepository(
                 {
                   "name": "DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf",
                   "size": 1120000000,
-                  "sha256": "f2910a284e918231028"
+                  "sha256": ""
                 }
               ]
             }

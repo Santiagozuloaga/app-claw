@@ -29,27 +29,33 @@ fun MobileActionsScreen(viewModel: ClawViewModel) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Cada tarjeta describe lo que realmente hace su botón: enviar un texto al chat del runtime
+        // HTTP. Ninguna API de WhatsApp/Gmail/Notion está integrada en esta build.
         AppActionCard(
             title = "WhatsApp Bridge",
-            description = "Leer y responder mensajes de WhatsApp autónomamente.",
+            description = "Sin puente con WhatsApp. El botón sólo envía el texto 'Abre WhatsApp' al chat; " +
+                "como no trae número, el motor lo marca 'falta_datos' y ninguna acción del sistema se ejecuta.",
             initialState = true,
             onExecute = { viewModel.sendChatMessage("Abre WhatsApp") }
         )
         AppActionCard(
             title = "Gmail API",
-            description = "Procesar, categorizar y redactar borradores de correo.",
+            description = "Sin API de Gmail. El botón envía 'Abre Gmail' al chat; sin destinatario la acción " +
+                "open_gmail_compose se devuelve como 'falta_datos' y no se redacta ningún correo.",
             initialState = false,
             onExecute = { viewModel.sendChatMessage("Abre Gmail") }
         )
         AppActionCard(
             title = "Notion / Memoria",
-            description = "Sincronizar apuntes y contexto a largo plazo.",
+            description = "Sin sincronización de apuntes. El botón envía 'Abre Notion' al chat, y esa frase sí " +
+                "mapea a open_notion_page: abre el navegador en el buscador de notion.so. Nada se guarda en Notion.",
             initialState = true,
             onExecute = { viewModel.sendChatMessage("Abre Notion") }
         )
         AppActionCard(
             title = "Control de Dispositivo",
-            description = "Ajustar brillo, volumen, wifi, y modos de energía.",
+            description = "El botón envía 'Abre ajustes' al chat, que resuelve a open_wifi_settings y abre la " +
+                "pantalla de Wi‑Fi del sistema. Brillo, volumen y modos de energía no están implementados.",
             initialState = false,
             onExecute = { viewModel.sendChatMessage("Abre ajustes") }
         )
@@ -58,6 +64,8 @@ fun MobileActionsScreen(viewModel: ClawViewModel) {
 
 @Composable
 fun AppActionCard(title: String, description: String, initialState: Boolean, onExecute: () -> Unit) {
+    // ESTADO LOCAL: este interruptor no se persiste ni consulta ninguna conexión real; sólo pinta
+    // el borde y habilita el botón mientras la pantalla esté compuesta.
     var isEnabled by remember { mutableStateOf(initialState) }
     
     Column(
@@ -99,7 +107,16 @@ fun AppActionCard(title: String, description: String, initialState: Boolean, onE
         ) {
             Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Probar Acción")
+            Text("Enviar esa frase al chat")
         }
+        Text(
+            text = if (isEnabled)
+                "Interruptor ON sin efecto fuera de esta pantalla: no hay conexión que activar ni preferencia guardada."
+            else
+                "Interruptor OFF: el botón queda inhabilitado en esta pantalla. No se guarda nada.",
+            color = TextMuted,
+            fontSize = 10.sp,
+            modifier = Modifier.padding(top = 8.dp)
+        )
     }
 }
