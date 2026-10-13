@@ -69,6 +69,7 @@ fun DashboardScreen(
     val modfile by viewModel.jarvisModfile.collectAsState()
     val ollamaConfig by viewModel.ollamaConfig.collectAsState()
     val consoleLogs by viewModel.consoleLogs.collectAsState()
+    val mensajes by viewModel.chatMessages.collectAsState()
     
     val activeTasks = tasks.filter { it.status == TaskStatus.RUNNING }
     var isVoiceListeningShowing by remember { mutableStateOf(false) }
@@ -141,10 +142,11 @@ fun DashboardScreen(
             )
             StatusCard(
                 title = "GPU/NPU",
-                value = "ACTIVO",
-                subtitle = hardware.npuGpuAccelerator.take(15),
+                // Antes decía "ACTIVO" fijo, encima de un subtítulo que decía "Ninguno".
+                value = if (hardware.npuGpuAccelerator.startsWith("Ninguno")) "NINGUNO" else "ACTIVO",
+                subtitle = hardware.npuGpuAccelerator.take(34),
                 icon = Icons.Default.DeveloperBoard,
-                iconColor = NeonSecondary,
+                iconColor = if (hardware.npuGpuAccelerator.startsWith("Ninguno")) TextMuted else NeonSecondary,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -163,7 +165,7 @@ fun DashboardScreen(
             )
             StatusCard(
                 title = "Tokens",
-                value = "${hardware.totalContextTokens}",
+                value = if (hardware.totalContextTokens > 0) "${hardware.totalContextTokens}" else "sin medir",
                 subtitle = "${hardware.tokensPerSecond} t/s",
                 icon = Icons.Default.GraphicEq,
                 iconColor = NeonTeal,
@@ -218,8 +220,18 @@ fun DashboardScreen(
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Análisis de código reciente", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    Text("Revisé los logs y encontré 2 advertencias menores.", color = TextSecondary, fontSize = 12.sp, maxLines = 1)
+                    // Era texto de relleno ("Análisis de código reciente / 2 advertencias menores")
+                    // que no correspondía a ninguna conversación. Ahora muestra el último intercambio real.
+                    val ultimoUsuario = mensajes.lastOrNull { it.sender == "USER" }?.text
+                    val ultimaRespuesta = mensajes.lastOrNull { it.sender == "JARVIS" && it.id != "c-1" }?.text
+                    Text(
+                        ultimoUsuario?.take(42) ?: "Sin conversaciones todavía",
+                        color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1
+                    )
+                    Text(
+                        ultimaRespuesta?.take(120) ?: "Escribe algo en el chat: aquí verás lo que respondió el runtime.",
+                        color = TextSecondary, fontSize = 12.sp, maxLines = 2
+                    )
                 }
                 Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = "Abrir", tint = TextMuted, modifier = Modifier.size(16.dp))
             }

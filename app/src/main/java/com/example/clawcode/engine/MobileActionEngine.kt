@@ -30,21 +30,101 @@ class MobileActionEngine(private val context: Context) : TextToSpeech.OnInitList
     }
 
     override fun onInit(status: Int) {
-        if (status == TextToSpeech.SUCCESS) {
-            val result = tts?.setLanguage(Locale("es", "ES"))
-            if (result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED) {
-                isTtsReady = true
+        if (status != TextToSpeech.SUCCESS) return
+        // El teléfono está en es-CO: se prueban variantes hispanohablantes en orden y se guarda la
+        // primera que el motor acepte, en lugar de fijar es-ES a ciegas como hacía antes.
+        val idiomaAceptado = listOf(Locale("es", "CO"), Locale("es", "US"), Locale("es", "ES"), Locale("es"))
+            .firstOrNull {
+                val r = tts?.setLanguage(it)
+                r != null && r != TextToSpeech.LANG_MISSING_DATA && r != TextToSpeech.LANG_NOT_SUPPORTED
             }
+        if (idiomaAceptado != null) {
+            isTtsReady = true
+            idiomaActivo = idiomaAceptado.toString()
+            vozPreferida = leerVozGuardada()
+            seleccionarMejorVoz()
         }
     }
 
+    private var idiomaActivo: String? = null
+    private var vozActiva: String? = null
+
+    /** Voz elegida por el usuario, o null para "automática". Sobrevive a los reinicios. */
+    var vozPreferida: String? = null
+        private set
+
+    private fun prefsVoz() = context.getSharedPreferences("claw_voice", Context.MODE_PRIVATE)
+
+    private fun leerVozGuardada(): String? =
+        runCatching { prefsVoz().getString("voz_preferida", null) }.getOrNull()
+
+    private fun guardarVoz(nombre: String?) {
+        runCatching { prefsVoz().edit().putString("voz_preferida", nombre).apply() }
+    }
+
+    /**
+     * Elige la voz en español que suene mejor de las que el motor tiene instaladas. Las pistas por
+     * nombre van primero porque `quality` no distingue entre la voz neuronal embebida de Google y
+     * la vieja voz de idioma, que sonaban igual en la pantalla y muy distinto por el altavoz.
+     */
+    private fun seleccionarMejorVoz() {
+        val motor = tts ?: return
+        val disponibles = runCatching { motor.voices }.getOrNull() ?: return
+        val pedidaPorElUsuario = vozPreferida?.let { buscada -> disponibles.firstOrNull { it.name == buscada } }
+        val preferida = pedidaPorElUsuario ?: run {
+            val enEspanol = disponibles.filter { v ->
+                v.locale?.language?.startsWith("es") == true && !v.isNetworkConnectionRequired
+            }
+            listOf("seanet", "neural", "embedded", "enhanced", "-ng.", "lo-", "google", "standard")
+                .firstNotNullOfOrNull { pista ->
+                    enEspanol.filter { it.name.contains(pista, ignoreCase = true) }.maxByOrNull { it.quality }
+                }
+                ?: enEspanol.maxByOrNull { it.quality }
+        }
+        if (preferida != null) {
+            motor.setVoice(preferida)
+            vozActiva = preferida.name
+        }
+    }
+
+    /** Qué se está usando de verdad, para poder mostrarlo y no prometer una voz que no existe. */
+    fun estadoVoz(): String {
+        if (!isTtsReady) return "TTS no disponible (el motor no inicializó)"
+        val sintetizador = runCatching { android.provider.Settings.Secure.getString(
+            context.contentResolver, "tts_default_synth")?.split("/")?.firstOrNull() }.getOrNull()
+        val motor = sintetizador ?: "motor del sistema"
+        return "$motor · $idiomaActivo · voz: ${vozActiva ?: "la por defecto del sistema"}"
+    }
+
+    data class OpcionVoz(val nombre: String, val calidad: Int, val requiereRed: Boolean, val idioma: String)
+
+    /** Inventario real del sintetizador, para que el usuario elija oyendo y no por fe. */
+    fun opcionesDeVoz(): List<OpcionVoz> =
+        runCatching { tts?.voices.orEmpty() }.getOrNull()
+            ?.map { OpcionVoz(it.name, it.quality, it.isNetworkConnectionRequired, it.locale?.toString() ?: "?") }
+            ?.sortedWith(compareByDescending<OpcionVoz> { it.calidad }.thenBy { it.nombre })
+            .orEmpty()
+
+    /** Devuelve false si la voz pedida no existe en este motor: no se guarda una opción fantasma. */
+    fun aplicarVoz(nombre: String?): Boolean {
+        val pedida = nombre?.takeIf { it.isNotBlank() }
+        val existe = pedida == null ||
+            runCatching { tts?.voices.orEmpty().any { it.name == pedida } }.getOrDefault(false)
+        if (!existe) return false
+        vozPreferida = pedida
+        guardarVoz(pedida)
+        if (isTtsReady) seleccionarMejorVoz()
+        return true
+    }
+
+    /** Devuelve true sólo si el texto quedó encolado de verdad; el llamador lo registra, no lo supone. */
     fun speak(
         text: String,
         voiceStyle: String = "Voz 1",
         pitchMultiplier: Float = 1.0f,
         speechRateMultiplier: Float = 1.0f
-    ) {
-        if (isTtsReady && tts != null) {
+    ): Boolean {
+        return if (isTtsReady && tts != null) {
             val basePitch = when {
                 voiceStyle.contains("Voz 2", ignoreCase = true) || voiceStyle.contains("Aguda", ignoreCase = true) || voiceStyle.contains("Femenina", ignoreCase = true) -> 1.45f
                 voiceStyle.contains("Robot", ignoreCase = true) || voiceStyle.contains("Sintética", ignoreCase = true) -> 0.45f
@@ -62,11 +142,13 @@ class MobileActionEngine(private val context: Context) : TextToSpeech.OnInitList
             try {
                 tts?.setPitch(finalPitch)
                 tts?.setSpeechRate(finalRate)
-                tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "JARVIS_VOICE_ID")
+                val encolado = tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "JARVIS_VOICE_ID")
+                encolado == TextToSpeech.SUCCESS
             } catch (e: Exception) {
                 e.printStackTrace()
+                false
             }
-        }
+        } else false
     }
 
     fun getInstalledApps(): List<InstalledApp> {

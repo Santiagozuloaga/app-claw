@@ -33,6 +33,7 @@ private val RUNTIME_FALSO = listOf("LiteRT", "Qwen 3.5", "Gemma 7B", "4-bit")
 /** Fuente real de la app, sin las líneas de comentario (los literales no se tocan). */
 private fun source(rel: String): String {
     val candidates = listOf(
+        "../../app/src/main/java/com/example/clawcode/$rel",
         "../app-claw-main/app/src/main/java/com/example/clawcode/$rel",
         "app-claw-main/app/src/main/java/com/example/clawcode/$rel"
     )
@@ -274,6 +275,31 @@ fun main() {
     ofensores.distinct().sorted().take(12).forEach { println("        - $it") }
     check("ningún rótulo de pantalla afirma ejecución en NPU/LiteRT/GGUF sin negarlo",
         ofensores.isEmpty(), "${ofensores.distinct().size} literales sospechosos")
+
+    println()
+    println("=== UI-7: los tres engaños que sólo se veían en pantalla ===")
+    val dashboard = source("ui/screens/DashboardScreen.kt")
+    check("la tarjeta GPU/NPU no fija 'ACTIVO' como valor",
+        !Regex("title = \"GPU/NPU\",\\s*value = \"ACTIVO\"").containsMatchIn(dashboard) &&
+            dashboard.contains("npuGpuAccelerator.startsWith(\"Ninguno\")"),
+        "el valor sale del estado medido")
+    check("la tarjeta de Tokens no arranca con 16384 de fábrica",
+        !dashboard.contains("value = \"${'$'}{hardware.totalContextTokens}\"") && dashboard.contains("sin medir"),
+        "muestra 'sin medir' hasta que el runtime lo declara")
+    check("no queda la conversación de relleno del panel",
+        !dashboard.contains("Revisé los logs y encontré 2 advertencias menores") &&
+            !dashboard.contains("Análisis de código reciente") &&
+            dashboard.contains("mensajes.lastOrNull"),
+        "enseña el último intercambio real")
+    val telemetria = source("data/model/Models.kt")
+    check("el centinela de contexto arranca en 0, no en un número inventado",
+        !Regex("totalContextTokens: Int = (?!0)").containsMatchIn(telemetria),
+        Regex("totalContextTokens: Int = \\d+").find(telemetria)?.value ?: "no encontrado")
+    val motor = source("engine/ClawEngine.kt")
+    check("la voz se registra con su resultado, no anunciada por adelantado",
+        motor.contains("[VOICE_TTS_QUEUED]") && motor.contains("[VOICE_TTS_FALLA]") &&
+            !motor.contains("[VOICE_TTS_TRIGGERED]"),
+        "cuando / cuando falla / sin motor")
 
     println()
     println(if (failures == 0) "RESULTADO UI-CAPACIDADES: 0 FAIL" else "RESULTADO UI-CAPACIDADES: $failures FAIL")
