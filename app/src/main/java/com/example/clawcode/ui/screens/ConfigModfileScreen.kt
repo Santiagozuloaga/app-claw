@@ -3,6 +3,7 @@ package com.example.clawcode.ui.screens
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,6 +16,7 @@ import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -24,6 +26,7 @@ import com.example.clawcode.data.model.CustomThemeColorPreset
 import com.example.clawcode.data.model.ModelTaskMode
 import com.example.clawcode.ui.theme.*
 import com.example.clawcode.viewmodel.ClawViewModel
+import kotlinx.coroutines.delay
 
 data class SettingPage(
     val id: String,
@@ -342,6 +345,7 @@ fun AgentPersonalitySettings(viewModel: ClawViewModel) {
         }
         
         ConfigSection("PERSONALIDAD Y SINTETIZADOR DE VOZ") {
+            var resultadoPruebaVoz by remember { mutableStateOf<Boolean?>(null) }
             ConfigSwitchRow("Modo Casual", isCasual) { 
                 val newTemp = if (it) 1.2f else 0.7f
                 viewModel.updateJarvisModfile(
@@ -371,6 +375,8 @@ fun AgentPersonalitySettings(viewModel: ClawViewModel) {
             }
             
             Spacer(modifier = Modifier.height(12.dp))
+            SelectorDeVozDelDispositivo(viewModel)
+            Spacer(modifier = Modifier.height(12.dp))
             Text("Tono de Voz (${"%.2f".format(jarvisModfile.pitchMultiplier)}x)", color = TextSecondary, fontSize = 13.sp)
             Slider(
                 value = jarvisModfile.pitchMultiplier,
@@ -394,13 +400,27 @@ fun AgentPersonalitySettings(viewModel: ClawViewModel) {
             Spacer(modifier = Modifier.height(12.dp))
             Button(
                 onClick = {
-                    viewModel.speakVoice("Hola, he actualizado mi voz a ${jarvisModfile.voiceStyle}", jarvisModfile.voiceStyle, jarvisModfile.pitchMultiplier, jarvisModfile.speechRateMultiplier)
+                    resultadoPruebaVoz = viewModel.speakVoice(
+                        "Prueba de voz: soy CLAW y ésta es la voz que vas a oír en el chat.",
+                        jarvisModfile.voiceStyle,
+                        jarvisModfile.pitchMultiplier,
+                        jarvisModfile.speechRateMultiplier
+                    )
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = NeonEmerald),
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text("🔊 Probar Sintetizador", color = DarkBackground, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            }
+            resultadoPruebaVoz?.let { encolada ->
+                Text(
+                    if (encolada) "Encolada en ${viewModel.mobileActionEngine.estadoVoz()}."
+                    else "El sintetizador no aceptó el turno: ${viewModel.mobileActionEngine.estadoVoz()}.",
+                    color = if (encolada) NeonEmerald else RedError,
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
             }
         }
     }
@@ -620,4 +640,79 @@ fun ColorSwatch(label: String, color: Color) {
         Spacer(modifier = Modifier.height(2.dp))
         Text(label, fontSize = 9.sp, color = TextMuted)
     }
+}
+
+/**
+ * El teléfono tiene voces instaladas y la app no las dejaba ver: "Voz 1 / Voz 2 / Robot" sólo
+ * mueven el tono y la velocidad sobre la voz que Android traiga por defecto. Aquí se lista el
+ * inventario real del sintetizador y se elige, que es la única forma de mejorar la voz de verdad.
+ */
+@Composable
+private fun SelectorDeVozDelDispositivo(viewModel: ClawViewModel) {
+    val motor = viewModel.mobileActionEngine
+    var reintentos by remember { mutableStateOf(0) }
+    val opciones = remember(reintentos) { motor.opcionesDeVoz() }
+    var seleccion by remember { mutableStateOf(motor.vozPreferida) }
+    var aviso by remember { mutableStateOf<String?>(null) }
+
+    // TextToSpeech inicializa en otro hilo: consultado demasiado pronto, voices viene vacío y la
+    // lista se quedaría vacía para siempre sin este reintento acotado.
+    LaunchedEffect(opciones.isEmpty()) {
+        while (opciones.isEmpty() && reintentos < 12) {
+            delay(500)
+            reintentos++
+        }
+    }
+
+    Text("Voz instalada en el teléfono", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+    Spacer(modifier = Modifier.height(4.dp))
+    Text(motor.estadoVoz(), color = TextMuted, fontSize = 11.sp)
+    Spacer(modifier = Modifier.height(6.dp))
+
+    FilaVoz("Automática (la de mejor calidad)", seleccion == null) {
+        if (motor.aplicarVoz(null)) {
+            seleccion = null
+            aviso = "Selección automática activada."
+        } else {
+            aviso = "El motor aún no responde: no se cambió la voz."
+        }
+    }
+    opciones.forEach { voz ->
+        FilaVoz(
+            texto = "${voz.nombre} · ${voz.idioma} · calidad ${voz.calidad}" +
+                if (voz.requiereRed) " · necesita red" else "",
+            activa = seleccion == voz.nombre
+        ) {
+            if (motor.aplicarVoz(voz.nombre)) {
+                seleccion = voz.nombre
+                aviso = "Voz aplicada: ${voz.nombre}"
+            } else {
+                aviso = "Esa voz ya no está en el motor: no se guardó."
+            }
+        }
+    }
+    if (opciones.isEmpty()) {
+        Text(
+            "Sin voces que listar (el sintetizador no expone su inventario o no terminó de iniciar).",
+            color = TextMuted,
+            fontSize = 11.sp
+        )
+    }
+    aviso?.let {
+        Text(it, color = NeonEmerald, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
+    }
+}
+
+@Composable
+private fun FilaVoz(texto: String, activa: Boolean, onClick: () -> Unit) {
+    Text(
+        text = (if (activa) "● " else "○ ") + texto,
+        color = if (activa) NeonEmerald else TextSecondary,
+        fontSize = 12.sp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { onClick() }
+            .padding(vertical = 5.dp, horizontal = 4.dp)
+    )
 }

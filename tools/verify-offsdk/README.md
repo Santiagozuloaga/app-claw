@@ -14,7 +14,11 @@ servidor Ollama falso (`com.sun.net.httpserver`).
   `app/build.gradle.kts`). Para `verify.VerifyProjectTestsKt` añades `junit-4.13.2.jar` y
   `hamcrest-core-1.3.jar`, que es lo que permite ejecutar el JUnit del propio proyecto sin Gradle.
 
-Batería verificada en esta rama: **21 arneses, 548 asserts en verde**, cada hito con prueba de
+Batería verificada en esta rama: **25 arneses, ~574 asserts en verde**, cada hito con prueba de
 no-vacuidad (sabotaje del código cubierto -> FAIL -> restauración idéntica -> PASS). Lo que este
-arnés **no** puede probar: nada que dependa de Compose (pantallas renderizadas) ni de un dispositivo
-— no hay SDK ni `gradle/wrapper` en la máquina de trabajo.
+arnés **no** puede probar: nada que dependa de Compose (pantallas renderizadas) ni de un dispositivo.
+
+Desde 2026-10-12 hay además un build Android real: `gradlew` + wrapper versionados, JDK 17 y SDK 35
+fuera del control de versiones (`local.properties` está ignorado). `./gradlew :app:assembleDebug`
+compila las pantallas que el arnés JVM no toca, y el APK resultante se instaló y ejecutó en un
+teléfono físico con `adb reverse tcp:11434 tcp:11434` apuntando a Ollama en el PC. Ver `docs/BUILD_ANDROID.md`.

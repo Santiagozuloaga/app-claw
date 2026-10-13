@@ -109,11 +109,16 @@ fun main() = runBlocking {
         "len=${reply?.length}")
     check("no es ninguna respuesta simulada hardcodeada",
         reply != null && !SIMULATED_TEMPLATES.any { reply.contains(it) }, "sin plantilla")
+    // El turno termina cuando se apaga chatAwaitingRuntime, pero el log de consola y la telemetría
+    // se escriben justo después: leídos de una sola disparan FAIL intermitentes bajo carga.
+    awaitUntil { vm.consoleLogs.value.any { it.message.contains("Inferencia REAL vía Ollama") } }
     val realLog = vm.consoleLogs.value.filter { it.message.contains("Inferencia REAL vía Ollama") }
     check("queda registrada la inferencia real", realLog.isNotEmpty(),
         realLog.lastOrNull()?.message?.take(160) ?: "ninguno")
+    awaitUntil { vm.ollamaConfig.value.isConnected }
     check("el runtime figura como conectado", vm.ollamaConfig.value.isConnected,
         "isConnected=${vm.ollamaConfig.value.isConnected}")
+    awaitUntil { vm.hardwareTelemetry.value.tokensPerSecond > 0f }
     val tps = vm.hardwareTelemetry.value.tokensPerSecond
     check("la telemetría de t/s sale de la medición real", tps > 0f, "tps=$tps")
 

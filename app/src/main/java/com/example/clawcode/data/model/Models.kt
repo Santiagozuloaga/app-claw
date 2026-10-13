@@ -199,7 +199,9 @@ data class HardwareTelemetry(
     // dos sondeos. 0 = todavía sin lectura previa.
     val cpuTotalJiffies: Long = 0L,
     val cpuIdleJiffies: Long = 0L,
-    val totalContextTokens: Int = 16384
+    // 0 = sin medir. El valor de la tarjeta "Tokens" lo publica el runtime en /api/ps; antes venía
+    // fijado en 16384, que no correspondía a ningún modelo cargado.
+    val totalContextTokens: Int = 0
 )
 
 data class SearchGroundingSource(

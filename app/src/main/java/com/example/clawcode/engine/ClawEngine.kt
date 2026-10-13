@@ -1,6 +1,7 @@
 package com.example.clawcode.engine
 
 import com.example.clawcode.data.model.*
+import com.example.clawcode.ui.util.textoPlanoDeMarkdown
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -372,6 +373,16 @@ class ClawEngine(
                     inferenceReply = reply
                     _ollamaConfig.update { it.copy(isConnected = true) }
                     _hardwareTelemetry.update { it.copy(tokensPerSecond = reply.tokensPerSecond) }
+                    if (_hardwareTelemetry.value.totalContextTokens == 0) {
+                        // La tarjeta "Tokens" pasa a mostrar el contexto que el runtime declara en
+                        // /api/ps, consultado una sola vez, en lugar del 16384 de fábrica.
+                        val huella = runCatching {
+                            ollamaClient.loadedModelFootprint(_ollamaConfig.value.hostUrl, reply.model).getOrNull()
+                        }.getOrNull()
+                        if (huella != null && huella.contextLength > 0) {
+                            _hardwareTelemetry.update { it.copy(totalContextTokens = huella.contextLength) }
+                        }
+                    }
                     "${groundingContextPrefix}${reply.text}" +
                             (if (attachedFileName != null) "\n\n📎 Archivo entregado al modelo: '$attachedFileName'." else "") +
                             groundingExtra
@@ -431,21 +442,26 @@ class ClawEngine(
             )
         }
 
-        // Speak if TTS enabled
+        // Hablar sólo si el usuario lo tiene activado, y registrar lo que pasó de verdad: antes se
+        // anunciaba "[VOICE_TTS_TRIGGERED] Sintetizando…" sin esperar al resultado del motor.
         if (_jarvisModfile.value.enableVoiceTTS) {
-            _consoleLogs.update {
-                it + ConsoleLog(
-                    id = UUID.randomUUID().toString(),
-                    timestamp = time2,
-                    sender = "VOICE_TTS_OUTBOUND",
-                    message = "[VOICE_TTS_TRIGGERED] Sintetizando salida de audio de voz (${_jarvisModfile.value.voiceStyle})"
-                )
-            }
-            mobileActionEngine?.speak(
-                text = jarvisResponseText,
+            val textoHablado = textoPlanoDeMarkdown(jarvisResponseText)
+                .replace(Regex("[\\p{So}\\p{Cn}]"), "")
+                .trim()
+            val hablo = mobileActionEngine?.speak(
+                text = textoHablado,
                 voiceStyle = _jarvisModfile.value.voiceStyle,
                 pitchMultiplier = _jarvisModfile.value.pitchMultiplier,
                 speechRateMultiplier = _jarvisModfile.value.speechRateMultiplier
+            )
+            appendConsoleLog(
+                "VOICE_TTS_OUTBOUND",
+                when (hablo) {
+                    true -> "[VOICE_TTS_QUEUED] Encolado en el sintetizador (${mobileActionEngine?.estadoVoz() ?: "sin datos"}), " +
+                            "${textoHablado.length} caracteres, estilo '${_jarvisModfile.value.voiceStyle}'."
+                    false -> "[VOICE_TTS_FALLA] El sintetizador no aceptó el turno: ${mobileActionEngine?.estadoVoz() ?: "motor no inicializado"}."
+                    null -> "[VOICE_TTS_NO_MOTOR] Sin motor de acciones en esta ruta: no se sintetizó audio."
+                }
             )
         }
 
@@ -1638,8 +1654,9 @@ class ClawEngine(
         ChatMessage(
             id = "c-1",
             sender = "JARVIS",
-            text = "Hola, soy JARVIS. Este chat responde con inferencia REAL contra el runtime local " +
-                    "configurado: ${_ollamaConfig.value.modelName} en ${_ollamaConfig.value.hostUrl}. " +
+            text = "Hola, soy JARVIS. Cada mensaje se envía al runtime configurado " +
+                    "('${_ollamaConfig.value.modelName}' en ${_ollamaConfig.value.hostUrl}); el modelo " +
+                    "corre donde esté ese runtime, no dentro de esta app, que no trae pesos embebidos. " +
                     "Puedo hablar por voz, analizar tus archivos, activar la cámara y abrir aplicaciones " +
                     "del teléfono. Si ese runtime no está accesible te lo aviso en el mensaje en lugar de " +
                     "devolver una respuesta simulada.",

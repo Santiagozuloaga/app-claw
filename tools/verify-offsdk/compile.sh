@@ -6,7 +6,13 @@
 set -euo pipefail
 
 V="$(cd "$(dirname "$0")" && pwd)"
-APP="$V/../app-claw-main/app/src/main/java/com/example/clawcode"
+# El arnés vive a la vez en el árbol de trabajo (../app-claw-main) y versionado dentro del repo
+# (tools/verify-offsdk). Se resuelve por tanteo para que el mismo fichero funcione en los dos sitios.
+APP=""
+for c in "$V/../../app/src/main/java/com/example/clawcode" "$V/../app-claw-main/app/src/main/java/com/example/clawcode"; do
+  if [ -d "$c" ]; then APP="$c"; break; fi
+done
+[ -n "$APP" ] || { echo "no se localiza el árbol de fuentes del módulo app"; exit 1; }
 JAVA_HOME="/c/Program Files/JetBrains/IntelliJ IDEA 2026.1.3/jbr"
 KOTLINC_JAR="/c/Program Files/JetBrains/IntelliJ IDEA 2026.1.3/plugins/Kotlin/kotlinc/lib/kotlin-compiler.jar"
 
@@ -33,6 +39,7 @@ SRC=(
   "$APP/core/telemetry/SystemMonitor.kt"
   "$APP/engine/ClawEngine.kt"
   "$APP/engine/OllamaClient.kt"
+  "$APP/ui/util/MarkdownInline.kt"
   "$APP/viewmodel/ClawViewModel.kt"
   "$V/stub/AndroidApp.kt"
   "$V/stub/AndroidContext.kt"
@@ -61,6 +68,7 @@ SRC=(
   "$V/VerifyChatHistory.kt"
   "$V/VerifyGrounding.kt"
   "$V/VerifyUiClaims.kt"
+  "$V/VerifyMarkdown.kt"
   "$V/VerifyConnectors.kt"
   # AppConnectorManager real, con stubs de PackageManager/Uri/cliente Gemini para poder ejecutarlo.
   "$APP/AppConnectorManager.kt"

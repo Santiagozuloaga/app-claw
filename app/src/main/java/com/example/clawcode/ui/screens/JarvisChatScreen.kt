@@ -36,9 +36,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.clawcode.ui.util.EstiloMarkdown
+import com.example.clawcode.ui.util.fragmentarMarkdown
 import com.example.clawcode.data.model.ChatMessage
 import com.example.clawcode.ui.theme.*
 import com.example.clawcode.viewmodel.ClawViewModel
@@ -319,12 +326,32 @@ fun ChatBubble(message: ChatMessage, palette: DynamicThemePalette, selectedAvata
                 .padding(horizontal = if (isUser) 16.dp else 0.dp, vertical = if (isUser) 12.dp else 4.dp)
         ) {
             Text(
-                text = message.text,
+                text = anotarMarkdown(message.text),
                 color = TextPrimary,
                 fontSize = 15.sp,
                 lineHeight = 22.sp
             )
         }
+    }
+}
+
+/**
+ * El runtime contesta en Markdown; pintarlo literal dejaba los `**` a la vista en la burbuja.
+ * El parseo vive en ui/util/MarkdownInline.kt (Kotlin puro) para que el arnés de JVM lo pruebe;
+ * aquí sólo se traducen los fragmentos a spans de Compose.
+ */
+internal fun anotarMarkdown(texto: String): AnnotatedString = buildAnnotatedString {
+    fragmentarMarkdown(texto).forEach { fragmento ->
+        when (fragmento.estilo) {
+            EstiloMarkdown.NEGRITA, EstiloMarkdown.TITULO -> pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
+            EstiloMarkdown.CURSIVA -> pushStyle(SpanStyle(fontStyle = FontStyle.Italic))
+            EstiloMarkdown.CODIGO -> pushStyle(
+                SpanStyle(fontFamily = FontFamily.Monospace, background = Color(0xFF1B2A33))
+            )
+            EstiloMarkdown.NINGUNO -> Unit
+        }
+        append(fragmento.texto)
+        if (fragmento.estilo != EstiloMarkdown.NINGUNO) pop()
     }
 }
 
