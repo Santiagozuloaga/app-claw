@@ -39,6 +39,8 @@ SRC=(
   "$APP/core/telemetry/SystemMonitor.kt"
   "$APP/engine/ClawEngine.kt"
   "$APP/engine/OllamaClient.kt"
+  "$APP/engine/ProveedorInferencia.kt"
+  "$APP/engine/OpenAiCompatibleClient.kt"
   "$APP/ui/util/MarkdownInline.kt"
   "$APP/engine/voice/GatePalabraClave.kt"
   "$APP/viewmodel/ClawViewModel.kt"
@@ -71,6 +73,7 @@ SRC=(
   "$V/VerifyUiClaims.kt"
   "$V/VerifyMarkdown.kt"
   "$V/VerifySha256.kt"
+  "$V/VerifyProviders.kt"
   "$V/VerifyVoiceGate.kt"
   "$V/VerifyConnectors.kt"
   # AppConnectorManager real, con stubs de PackageManager/Uri/cliente Gemini para poder ejecutarlo.

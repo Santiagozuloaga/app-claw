@@ -79,7 +79,9 @@ data class OllamaChatRequest(
 class OllamaClient(
     private val connectTimeoutSeconds: Long = 10,
     private val readTimeoutSeconds: Long = 240
-) {
+) : ProveedorInferencia {
+
+    override val nombre: String = "ollama"
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -93,9 +95,9 @@ class OllamaClient(
             .build()
     }
 
-    suspend fun chat(
+    override suspend fun chat(
         request: OllamaChatRequest,
-        onToken: ((String) -> Unit)? = null
+        onToken: ((String) -> Unit)?
     ): Result<OllamaChatReply> = withContext(Dispatchers.IO) {
         try {
             Result.success(executeChat(request, onToken))
@@ -114,7 +116,7 @@ class OllamaClient(
     }
 
     /** Modelos realmente descargados en el servidor, ordenados del más ligero al más pesado. */
-    suspend fun listCompletionModels(hostUrl: String): Result<List<OllamaModelInfo>> =
+    override suspend fun listCompletionModels(hostUrl: String): Result<List<OllamaModelInfo>> =
         withContext(Dispatchers.IO) {
             try {
                 Result.success(executeListModels(hostUrl))
@@ -387,7 +389,7 @@ class OllamaClient(
     }
 
     /** Memoria real reservada por el modelo cargado, obtenida de GET /api/ps. */
-    suspend fun loadedModelFootprint(hostUrl: String, model: String): Result<OllamaModelFootprint> =
+    override suspend fun loadedModelFootprint(hostUrl: String, model: String): Result<OllamaModelFootprint> =
         withContext(Dispatchers.IO) {
             try {
                 Result.success(executeFootprint(hostUrl, model))
