@@ -35,7 +35,11 @@ enum class NavigationTab(val route: String, val title: String, val icon: ImageVe
     TASKS_LOGS("tasks_logs", "Tareas", Icons.Default.Checklist),
     MEMORY("memory", "Memoria", Icons.Default.Memory),
     CONFIG_MODFILE("config_modfile", "Sistema", Icons.Default.Settings),
-    CONSOLE("console", "Consola", Icons.Default.Terminal)
+    CONSOLE("console", "Consola", Icons.Default.Terminal),
+    // Estas dos pantallas existian y compilan desde el principio, pero no estaban en ninguna
+    // navegacion: nadie podia abrirlas. El drawer recorre values(), asi que quedan accesibles.
+    MOBILE_ACTIONS("mobile_actions", "Acciones", Icons.Default.PhoneAndroid),
+    TERMINAL("terminal", "Terminal", Icons.Default.Code)
 }
 
 class MainActivity : ComponentActivity() {
@@ -52,8 +56,7 @@ class MainActivity : ComponentActivity() {
                 customThemeColorPreset = jarvisModfile.customThemeColorPreset,
                 personality = jarvisModfile.personality,
                 taskMode = jarvisModfile.currentTaskMode,
-                temperatureC = hardwareTelemetry.batteryTemperatureC,
-                isDarkMode = jarvisModfile.isDarkMode
+                temperatureC = hardwareTelemetry.batteryTemperatureC
             ) {
                 MainAppScreen(viewModel = viewModel)
             }
@@ -80,6 +83,21 @@ fun MainAppScreen(viewModel: ClawViewModel) {
         }
     }
 
+    // El servicio de escucha no puede alcanzar el ViewModel, así que el comando dictado llega por
+    // este bus y aquí se convierte en un turno de chat normal, con su paso por el runtime.
+    DisposableEffect(viewModel) {
+        com.example.clawcode.service.BusVoz.onComando = { comando ->
+            viewModel.sendChatMessage(comando)
+        }
+        com.example.clawcode.service.BusVoz.onEstado = { estado ->
+            viewModel.registrarEstadoVoz(estado)
+        }
+        onDispose {
+            com.example.clawcode.service.BusVoz.onComando = null
+            com.example.clawcode.service.BusVoz.onEstado = null
+        }
+    }
+
     var currentTab by remember { mutableStateOf(initialTab) }
     var tabStack by remember { mutableStateOf(listOf(initialTab)) }
 
@@ -88,6 +106,7 @@ fun MainAppScreen(viewModel: ClawViewModel) {
     // ollamaConfig.modelName (persistido por PrefsOllamaConfigStore) y chatMessages.
     val ollamaConfig by viewModel.ollamaConfig.collectAsStateWithLifecycle()
     val chatMessages by viewModel.chatMessages.collectAsStateWithLifecycle()
+    val consoleLogs by viewModel.consoleLogs.collectAsStateWithLifecycle()
     val drawerAvatarIcon = remember(jarvisModfile.selectedAvatarId) {
         when (jarvisModfile.selectedAvatarId) {
             1 -> Icons.Default.SmartToy
@@ -312,6 +331,42 @@ fun MainAppScreen(viewModel: ClawViewModel) {
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                // El tema calculaba aviso termico y etiquetas de modo/personalidad y nadie los leia
+                // nunca: se tiraban a la basura en cada recomposicion. Aqui se muestran.
+                val palette = LocalDynamicThemePalette.current
+                palette.thermalWarningText?.let { aviso ->
+                    Text(
+                        text = aviso,
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(RedError)
+                            .padding(horizontal = 16.dp, vertical = 6.dp)
+                    )
+                }
+                if (palette.activeTaskLabel.isNotBlank() || palette.activePersonalityLabel.isNotBlank()) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "Modo: ${palette.activeTaskLabel}",
+                            color = palette.secondary,
+                            fontSize = 10.sp,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = "Personalidad: ${palette.activePersonalityLabel}",
+                            color = TextMuted,
+                            fontSize = 10.sp,
+                            maxLines = 1
+                        )
+                    }
+                }
                 when (currentTab) {
                     NavigationTab.DASHBOARD -> DashboardScreen(
                         viewModel = viewModel,
@@ -347,6 +402,13 @@ fun MainAppScreen(viewModel: ClawViewModel) {
                         viewModel = viewModel
                     )
                     NavigationTab.CONSOLE -> UnifiedConsoleScreen(viewModel)
+                    NavigationTab.MOBILE_ACTIONS -> MobileActionsScreen(viewModel)
+                    NavigationTab.TERMINAL -> TerminalScreen(
+                        viewModel = viewModel,
+                        consoleLogs = consoleLogs,
+                        onSendPrompt = { cmd -> viewModel.sendConsolePrompt(cmd) }
+                    )
+                }
                 }
             }
         }

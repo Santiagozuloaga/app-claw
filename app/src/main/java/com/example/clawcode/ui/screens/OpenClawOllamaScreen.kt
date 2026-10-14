@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import com.example.clawcode.data.model.WhatsAppMessage
 import com.example.clawcode.ui.theme.*
 import com.example.clawcode.viewmodel.ClawViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +39,9 @@ fun OpenClawOllamaScreen(viewModel: ClawViewModel) {
     // lee y se reescribe tal cual, porque no hay runtime local que activar.
 
     var simSenderName by remember { mutableStateOf("David Botero") }
+    var hostEnPrueba by remember { mutableStateOf(false) }
+    var hostPruebaResultado by remember { mutableStateOf<String?>(null) }
+    val hostPruebaScope = rememberCoroutineScope()
     var simMessageText by remember { mutableStateOf("Abre los ajustes de wifi y crea un contacto para Juan") }
 
     Column(
@@ -268,6 +272,38 @@ fun OpenClawOllamaScreen(viewModel: ClawViewModel) {
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("Guardar Parámetros del Runtime HTTP", color = DarkBackground, fontWeight = FontWeight.Bold)
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = {
+                        hostEnPrueba = true
+                        hostPruebaResultado = null
+                        hostPruebaScope.launch {
+                            val r = viewModel.sondaRuntime(hostUrl.trim())
+                            hostPruebaResultado = if (r == null)
+                                "Sin respuesta de ${hostUrl.trim()}: conexión no comprobada."
+                            else
+                                "El runtime responde en ${r.second} ms y sirve ${r.first} modelo(s) de completion."
+                            hostEnPrueba = false
+                        }
+                    },
+                    border = BorderStroke(1.dp, NeonTeal),
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = !hostEnPrueba && hostUrl.isNotBlank()
+                ) {
+                    Text(
+                        if (hostEnPrueba) "Comprobando…" else "Comprobar conexión ahora",
+                        color = NeonTeal, fontSize = 12.sp, fontWeight = FontWeight.Bold
+                    )
+                }
+                hostPruebaResultado?.let {
+                    Text(
+                        text = it,
+                        color = if (it.startsWith("Sin respuesta")) RedError else NeonTeal,
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
                 }
             }
         }

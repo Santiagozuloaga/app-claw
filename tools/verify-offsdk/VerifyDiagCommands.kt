@@ -367,5 +367,36 @@ fun main() {
         sysPolled.take(260))
 
     println()
+    println("=== DC-11: el boton 'Comprobar conexion ahora' mide de verdad ===")
+    val sondaViva = runBlocking { live.sondaRuntime("http://127.0.0.1:11434") }
+    check(
+        "sondaRuntime devuelve modelos y una latencia medida contra el runtime vivo",
+        sondaViva != null && sondaViva!!.first > 0 && sondaViva!!.second >= 0L,
+        "modelos=${sondaViva?.first} ms=${sondaViva?.second}"
+    )
+    check(
+        "un turno de sonda satisfactorio deja el runtime como conectado",
+        live.ollamaConfig.value.isConnected,
+        "isConnected=${live.ollamaConfig.value.isConnected}"
+    )
+    val sondaMuerta = runBlocking { live.sondaRuntime("http://127.0.0.1:1") }
+    check(
+        "con el host caido la sonda devuelve null, no un exito",
+        sondaMuerta == null,
+        if (sondaMuerta == null) "null, y la pantalla dira que no comprobo conexion" else "devolvio $sondaMuerta"
+    )
+    check(
+        "tras la sonda fallida isConnected vuelve a false",
+        !live.ollamaConfig.value.isConnected,
+        "isConnected=${live.ollamaConfig.value.isConnected}"
+    )
+    val logSonda = live.consoleLogs.value.last { it.sender == "RUNTIME_PROBE" }.message
+    check(
+        "la consola registra el fallo con la causa, no con un veredicto generico",
+        logSonda.startsWith("[SONDA_FALLO]") && logSonda.contains("http://127.0.0.1:1"),
+        logSonda.take(150)
+    )
+
+    println()
     println(if (failures == 0) "RESULTADO DIAG: 0 FAIL" else "RESULTADO DIAG: $failures FAIL")
 }

@@ -98,6 +98,35 @@ class ClawEngine(
     private val _taskPerformanceMetrics = MutableStateFlow<List<TaskPerformanceMetrics>>(emptyList())
     val taskPerformanceMetrics: StateFlow<List<TaskPerformanceMetrics>> = _taskPerformanceMetrics.asStateFlow()
 
+    /** Ventana deslizante de turnos efectivamente intentados, con su latencia medida. */
+    private val turnosMedidos = java.util.Collections.synchronizedList(mutableListOf<TurnoMedido>())
+
+    /**
+     * Unica fuente de taskPerformanceMetrics: exito, latencia y media salen de turnos reales contra
+     * el runtime. Si no hay turnos, la lista queda vacia en lugar de inventar una tasa de exito.
+     */
+    private fun registrarTurnoMedido(exito: Boolean, latenciaMs: Long) {
+        turnosMedidos.add(TurnoMedido(horaLocal(), exito, latenciaMs))
+        while (turnosMedidos.size > 200) turnosMedidos.removeAt(0)
+        val ventana = turnosMedidos.toList()
+        if (ventana.isEmpty()) return
+        val exitosos = ventana.count { it.exito }
+        val latencias = ventana.filter { it.exito }.map { it.latenciaMs }
+        val mediaSegundos = if (latencias.isEmpty()) 0f
+        else (latencias.average() / 1000.0).toFloat()
+        _taskPerformanceMetrics.update {
+            listOf(
+                TaskPerformanceMetrics(
+                    timeLabel = "últimos ${ventana.size} turnos",
+                    successRatePct = exitosos * 100f / ventana.size,
+                    avgDurationSeconds = mediaSegundos,
+                    totalCompleted = exitosos,
+                    totalFailed = ventana.size - exitosos
+                )
+            )
+        }
+    }
+
     fun updateHardwareTelemetry(newTelemetry: HardwareTelemetry) {
         _hardwareTelemetry.value = newTelemetry
         com.example.clawcode.core.EventBus.tryPublish(
@@ -372,6 +401,7 @@ class ClawEngine(
             runLocalInference(text, attachedFileName, historyBeforeUserMessage, onStreamedToken).fold(
                 onSuccess = { reply ->
                     inferenceReply = reply
+                    registrarTurnoMedido(true, reply.latencyMs)
                     _ollamaConfig.update { it.copy(isConnected = true) }
                     _hardwareTelemetry.update { it.copy(tokensPerSecond = reply.tokensPerSecond) }
                     if (_hardwareTelemetry.value.totalContextTokens == 0) {
@@ -385,11 +415,13 @@ class ClawEngine(
                         }
                     }
                     "${groundingContextPrefix}${reply.text}" +
-                            (if (attachedFileName != null) "\n\n📎 Archivo entregado al modelo: '$attachedFileName'." else "") +
+                            (if (attachedFileName != null) "\n\n📎 Al modelo solo le llegó el NOMBRE de '$attachedFileName': " +
+                                "esta build no abre ni analiza el contenido del archivo." else "") +
                             groundingExtra
                 },
                 onFailure = { error ->
                     inferenceFailure = error.message ?: error.javaClass.simpleName
+                    registrarTurnoMedido(false, 0L)
                     _ollamaConfig.update { it.copy(isConnected = false) }
                     staticFallbackText() + "\n\n⚠️ [Runtime local sin respuesta] $inferenceFailure" +
                             runtimeConnectionHint(_ollamaConfig.value.hostUrl)
@@ -721,10 +753,6 @@ class ClawEngine(
         _jarvisModfile.update { it.copy(customThemeColorPreset = preset) }
     }
 
-    fun setDarkMode(isDark: Boolean) {
-        _jarvisModfile.update { it.copy(isDarkMode = isDark) }
-    }
-
     /**
      * Las tres acciones rápidas publicaban en el chat un veredicto fabricado ("todos los
      * subsistemas operan de forma óptima", "0 advertencias críticas", "Almacén de Vectores Local
@@ -786,6 +814,7 @@ class ClawEngine(
     ): Pair<String, Boolean> =
         runLocalInference(prompt, null, _chatMessages.value, onToken).fold(
             onSuccess = { reply ->
+                registrarTurnoMedido(true, reply.latencyMs)
                 _ollamaConfig.update { it.copy(isConnected = true) }
                 _hardwareTelemetry.update { it.copy(tokensPerSecond = reply.tokensPerSecond) }
                 appendConsoleLog(
@@ -798,6 +827,7 @@ class ClawEngine(
             },
             onFailure = { error ->
                 val reason = error.message ?: error.javaClass.simpleName
+                registrarTurnoMedido(false, 0L)
                 _ollamaConfig.update { it.copy(isConnected = false) }
                 appendConsoleLog(
                     "MODEL_INFERENCE",
@@ -809,6 +839,37 @@ class ClawEngine(
                         runtimeConnectionHint(_ollamaConfig.value.hostUrl) to false
             }
         )
+
+    /**
+     * Sondeo pedido por el usuario ("Probar Conexión"): mide cuanto tarda el host en responder a
+     * /api/tags y cuantos modelos de completion sirve. Devuelve null si no responde, en cuyo caso
+     * la interfaz dice que no hay conexion en lugar de afirmar que la configuracion se guardo bien.
+     */
+    suspend fun sondaRuntime(hostUrl: String = _ollamaConfig.value.hostUrl): Pair<Int, Long>? {
+        val inicio = System.currentTimeMillis()
+        val modelos = runCatching { ollamaClient.listCompletionModels(hostUrl).getOrNull() }.getOrNull()
+        val medidoMs = System.currentTimeMillis() - inicio
+        return if (modelos == null) {
+            _ollamaConfig.update { it.copy(isConnected = false) }
+            appendConsoleLog(
+                "RUNTIME_PROBE",
+                "[SONDA_FALLO] $hostUrl no respondio en ${medidoMs}ms: no se ha podido comprobar la conexion."
+            )
+            null
+        } else {
+            _ollamaConfig.update { it.copy(isConnected = true) }
+            appendConsoleLog(
+                "RUNTIME_PROBE",
+                "[SONDA_OK] $hostUrl respondio en ${medidoMs}ms y sirve ${modelos.size} modelo(s) de completion."
+            )
+            modelos.size to medidoMs
+        }
+    }
+
+    /** El servicio de escucha vive fuera del motor: esto es su unico canal hacia la consola. */
+    fun registrarEstadoVoz(estado: String) {
+        appendConsoleLog("VOICE_CONTINUA", "[ESTADO] $estado")
+    }
 
     private fun appendConsoleLog(sender: String, message: String) {
         _consoleLogs.update {
@@ -1671,3 +1732,9 @@ class ClawEngine(
     // Sin serie de rendimiento inventada: el gráfico sólo debe mostrar horas con tareas reales.
 }
 
+/** Intento de turno contra el runtime, con la latencia que devolvio ese turno concreto. */
+private data class TurnoMedido(
+    val hora: String,
+    val exito: Boolean,
+    val latenciaMs: Long
+)

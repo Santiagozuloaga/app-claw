@@ -223,10 +223,6 @@ class ClawViewModel(application: Application) : AndroidViewModel(application) {
         engine.setCustomThemeColorPreset(preset)
     }
 
-    fun setDarkMode(isDark: Boolean) {
-        engine.setDarkMode(isDark)
-    }
-
     fun executeQuickActionSummarizeLogs() {
         viewModelScope.launch {
             engine.executeQuickActionSummarizeLogs()
@@ -311,6 +307,10 @@ class ClawViewModel(application: Application) : AndroidViewModel(application) {
     fun addMemory(key: String, category: String, value: String) {
         engine.addMemory(key, category, value)
     }
+
+    fun registrarEstadoVoz(estado: String) = engine.registrarEstadoVoz(estado)
+
+    suspend fun sondaRuntime(hostUrl: String): Pair<Int, Long>? = engine.sondaRuntime(hostUrl)
 
     fun sendConsolePrompt(prompt: String) {
         viewModelScope.launch {

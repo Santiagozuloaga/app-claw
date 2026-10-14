@@ -20,7 +20,6 @@ data class DynamicThemePalette(
     val border: Color = DarkBorder,
     val background: Color = DarkBackground,
     val surface: Color = DarkSurface,
-    val isDarkMode: Boolean = true,
     val thermalWarningText: String? = null,
     val activeTaskLabel: String = "Modo Reposo",
     val activePersonalityLabel: String = "JARVIS Analista"
@@ -51,8 +50,7 @@ fun getDynamicThemePalette(
     customThemeColorPreset: CustomThemeColorPreset = CustomThemeColorPreset.CYAN,
     personality: AgentPersonality = AgentPersonality.JARVIS_ANALYST,
     taskMode: ModelTaskMode = ModelTaskMode.IDLE_STANDBY,
-    temperatureC: Float = 33.5f,
-    isDarkMode: Boolean = true
+    temperatureC: Float = 33.5f
 ): DynamicThemePalette {
     var basePrimary: Color
     var baseSecondary: Color
@@ -93,7 +91,6 @@ fun getDynamicThemePalette(
         border = dynamicBorder,
         background = bg,
         surface = surf,
-        isDarkMode = true, // Force dark mode as per design system
         thermalWarningText = thermalWarningText,
         activeTaskLabel = if (useAutoDynamicTheme) taskMode.displayName else "Manual: ${customThemeColorPreset.displayName}",
         activePersonalityLabel = personality.displayName
@@ -113,16 +110,17 @@ fun ClawTheme(
     personality: AgentPersonality = AgentPersonality.JARVIS_ANALYST,
     taskMode: ModelTaskMode = ModelTaskMode.IDLE_STANDBY,
     temperatureC: Float = 33.5f,
-    isDarkMode: Boolean = true,
     content: @Composable () -> Unit
 ) {
+    // La app solo esta pintada en oscuro: antes esto era un parametro que llegaba desde el modfile
+    // y se descartaba dos lineas mas abajo. Se queda constante para no simular un ajuste.
+    val isDarkMode = true
     val palette = getDynamicThemePalette(
         useAutoDynamicTheme = useAutoDynamicTheme,
         customThemeColorPreset = customThemeColorPreset,
         personality = personality,
         taskMode = taskMode,
-        temperatureC = temperatureC,
-        isDarkMode = isDarkMode
+        temperatureC = temperatureC
     )
 
     val onBgText = if (isDarkMode) TextPrimary else Color(0xFF0F172A)

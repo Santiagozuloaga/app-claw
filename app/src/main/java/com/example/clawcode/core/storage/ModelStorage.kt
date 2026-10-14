@@ -52,14 +52,9 @@ class ModelStorage(private val context: Context) {
         } else false
     }
 
-    fun getAvailableStorageBytes(): Long {
-        return try {
-            val stat = android.os.StatFs(modelsDirectory.absolutePath)
-            stat.availableBlocksLong * stat.blockSizeLong
-        } catch (e: Exception) {
-            5000000000L // 5GB fallback
-        }
-    }
+    // getAvailableStorageBytes() eliminado: no lo llamaba nadie y su reserva era 5.000.000.000
+    // bytes "por si acaso", una cifra que DiskSpaceManager.getStorageOverview() ya no necesita
+    // porque lee StatFs de verdad y reporta -1 (sin medir) cuando falla.
 
     fun getInstalledModelFiles(): List<File> {
         return modelsDirectory.listFiles { file -> file.isDirectory && file.name != "downloads" }?.toList() ?: emptyList()

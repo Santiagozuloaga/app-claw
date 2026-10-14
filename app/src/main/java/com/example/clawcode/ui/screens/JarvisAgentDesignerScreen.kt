@@ -4,6 +4,7 @@ import android.os.StatFs
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,6 +15,8 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -614,6 +617,17 @@ fun JarvisAgentDesignerScreen(viewModel: ClawViewModel) {
                     fontSize = 11.sp,
                     fontFamily = FontFamily.Monospace
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                // El txt de AI Studio prometio un boton "Copiar Modfile" que nunca se escribio.
+                // Copia el texto que se ve arriba, que es el que de verdad se genera en memoria.
+                val portapapeles = LocalClipboardManager.current
+                OutlinedButton(
+                    onClick = { portapapeles.setText(AnnotatedString(rawModfileCode)) },
+                    border = BorderStroke(1.dp, NeonAmber),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Copiar Modfile", color = NeonAmber, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
 
