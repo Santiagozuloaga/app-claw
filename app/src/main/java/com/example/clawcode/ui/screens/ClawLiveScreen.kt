@@ -46,6 +46,7 @@ fun ClawLiveScreen(
     val hardware by viewModel.hardwareTelemetry.collectAsState()
     val chatMessages by viewModel.chatMessages.collectAsState()
     val tasks by viewModel.tasks.collectAsState()
+    val modfileVoz by viewModel.jarvisModfile.collectAsState()
 
     // Waveform Animation state
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
@@ -151,29 +152,66 @@ fun ClawLiveScreen(
                 )
             }
             
-            // Background Live Service Toggle
-            // El servicio sólo publica una notificación persistente y mantiene el proceso vivo:
-            // no abre el micrófono ni transcribe nada, así que ni el aviso ni el chip pueden decirlo.
+            // Escucha continua real. Antes este chip arrancaba un servicio que sólo publicaba una
+            // notificación; ahora abre SpeechRecognizer del sistema y sólo actúa si la frase
+            // transcrita empieza por la palabra clave del modfile.
             var isBackgroundModeActive by remember { mutableStateOf(false) }
+            var estadoEscucha by remember { mutableStateOf("apagada") }
+            // minSdk 24, asi que se puede preguntar directo al Context sin androidx ContextCompat.
+            val permisoAudioConcedido = context.checkSelfPermission(
+                android.Manifest.permission.RECORD_AUDIO
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
             FilterChip(
                 selected = isBackgroundModeActive,
                 onClick = {
-                    isBackgroundModeActive = !isBackgroundModeActive
-                    try {
-                        if (isBackgroundModeActive) {
-                            com.example.clawcode.service.ClawLiveBackgroundService.startService(context)
-                            viewModel.mobileActionEngine.speak("Servicio Claw Live iniciado: sólo mantiene la notificación")
-                            android.widget.Toast.makeText(context, "🔔 Service en segundo plano: mantiene la notificación (sin capturar audio)", android.widget.Toast.LENGTH_SHORT).show()
-                        } else {
-                            com.example.clawcode.service.ClawLiveBackgroundService.stopService(context)
-                            android.widget.Toast.makeText(context, "Service detenido: la notificación se retira", android.widget.Toast.LENGTH_SHORT).show()
+                    if (!isBackgroundModeActive && !permisoAudioConcedido) {
+                        // Sin permiso no hay micro: decir "escuchando" sería exactamente la mentira
+                        // que esta pantalla tenía antes.
+                        android.widget.Toast.makeText(
+                            context,
+                            "No se puede escuchar: falta el permiso de micrófono de CLAW en Ajustes > Aplicaciones",
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        isBackgroundModeActive = !isBackgroundModeActive
+                        try {
+                            if (isBackgroundModeActive) {
+                                com.example.clawcode.service.ClawLiveBackgroundService.startService(
+                                    context, modfileVoz.wakeWord
+                                )
+                                estadoEscucha = "arrancando…"
+                                viewModel.mobileActionEngine.speak("Escucha continua activada")
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "🎙️ Escuchando: di \"${modfileVoz.wakeWord}\" seguido de la orden",
+                                    android.widget.Toast.LENGTH_LONG
+                                ).show()
+                            } else {
+                                com.example.clawcode.service.ClawLiveBackgroundService.stopService(context)
+                                estadoEscucha = "apagada"
+                                android.widget.Toast.makeText(
+                                    context, "Escucha continua detenida: el micrófono se cierra",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        } catch (e: Exception) {
+                            isBackgroundModeActive = false
+                            estadoEscucha = "no arrancó"
+                            android.widget.Toast.makeText(
+                                context, "No se pudo controlar la escucha: ${e.localizedMessage}",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
                         }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                        android.widget.Toast.makeText(context, "No se pudo controlar el service: ${e.localizedMessage}", android.widget.Toast.LENGTH_SHORT).show()
                     }
                 },
-                label = { Text(if (isBackgroundModeActive) " 🔔 Notificación (ON)" else "Notificación (OFF)", fontSize = 10.sp) },
+                label = {
+                    Text(
+                        if (isBackgroundModeActive) " 🎙️ ${modfileVoz.wakeWord} · $estadoEscucha"
+                        else "Escucha continua (OFF)",
+                        fontSize = 10.sp
+                    )
+                },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = palette.primary.copy(alpha = 0.25f),
                     selectedLabelColor = palette.primary

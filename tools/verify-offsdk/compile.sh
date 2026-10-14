@@ -40,6 +40,7 @@ SRC=(
   "$APP/engine/ClawEngine.kt"
   "$APP/engine/OllamaClient.kt"
   "$APP/ui/util/MarkdownInline.kt"
+  "$APP/engine/voice/GatePalabraClave.kt"
   "$APP/viewmodel/ClawViewModel.kt"
   "$V/stub/AndroidApp.kt"
   "$V/stub/AndroidContext.kt"
@@ -70,6 +71,7 @@ SRC=(
   "$V/VerifyUiClaims.kt"
   "$V/VerifyMarkdown.kt"
   "$V/VerifySha256.kt"
+  "$V/VerifyVoiceGate.kt"
   "$V/VerifyConnectors.kt"
   # AppConnectorManager real, con stubs de PackageManager/Uri/cliente Gemini para poder ejecutarlo.
   "$APP/AppConnectorManager.kt"

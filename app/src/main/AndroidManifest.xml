@@ -10,6 +10,9 @@
 
     <!-- Hardware, Audio, Camera & Sensors -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- El servicio de escucha continua abre SpeechRecognizer de verdad, asi que el tipo
+         microphone y su permiso dejan de ser decorativos. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
@@ -75,7 +78,8 @@
         <service
             android:name=".service.ClawLiveBackgroundService"
             android:enabled="true"
-            android:exported="false" />
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
 
         <!-- Home Screen App Widget -->
         <receiver

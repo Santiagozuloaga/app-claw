@@ -132,7 +132,6 @@ data class JarvisModfile(
     val currentTaskMode: ModelTaskMode = ModelTaskMode.IDLE_STANDBY,
     val useAutoDynamicTheme: Boolean = true,
     val customThemeColorPreset: CustomThemeColorPreset = CustomThemeColorPreset.CYAN,
-    val isDarkMode: Boolean = true,
     val selectedAvatarId: Int = 1
 )
 
